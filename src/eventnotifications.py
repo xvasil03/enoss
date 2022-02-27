@@ -5,13 +5,10 @@ from swift.common.request_helpers import get_sys_meta_prefix
 from swift.proxy.controllers.base import get_container_info, get_account_info, get_object_info
 from eventlet import Timeout
 import six
-if six.PY3:
-    from eventlet.green.urllib import request as urllib2
-else:
-    from eventlet.green import urllib2
 
 from pystalkd.Beanstalkd import Connection
 import json
+import jsonschema
 from datetime import datetime
 from swift.common.wsgi import WSGIContext
 from swift.common.swob import Request
@@ -92,6 +89,8 @@ class EventNotificationsMiddleware(WSGIContext):
         self.app = app
         self.logger = get_logger(conf, log_route='eventnotifications')
         super(EventNotificationsMiddleware, self).__init__(app)
+        with open('/usr/local/src/swift/swift/common/middleware/event_notifications/configuration-schema.json', 'r') as file:
+            self.schema = json.load(file)
 
     def __create_payload(self, req):
         try:
@@ -100,17 +99,33 @@ class EventNotificationsMiddleware(WSGIContext):
             res = str(e)
         return res
 
+    def __validate_config(self, req, c):
+        config = req.body_file.read()
+        if config:
+            try:
+                configJson = json.loads(config)
+                jsonschema.validate(instance=configJson, schema=self.schema)
+                req.headers[get_sys_meta_prefix('container') + 'notifications'] = config
+            except Exception as err:
+                c.put(str(err))
+
+
     @wsgify
     def __call__(self, req):
         c = Connection("localhost", 11300)
+        if req.method == "POST" and req.query_string == "notification":
+            self.__validate_config(req, c)
         # swift can call it self recursively => we want only one notification per user request
         req.headers["X-Backend-EventNotification-Ignore"] = True
         resp = req.get_response(self.app)
-        try:
-            if not resp.headers.get("X-Backend-EventNotification-Ignore"):
-                c.put(json.dumps(self.__create_payload(resp)))
-        except Exception as e:
-            c.put(str(e))
+        if not resp.headers.get("X-Backend-EventNotification-Ignore"):
+            container = get_container_info(resp.environ, self.app)
+            event_notifications_configuration = container.get("sysmeta", {}).get("notifications")
+            if event_notifications_configuration:
+                try:
+                    c.put(json.dumps(self.__create_payload(resp)))
+                except Exception as e:
+                    c.put(str(e))
         return resp
 
 
