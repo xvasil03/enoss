@@ -15,6 +15,8 @@ from swift.common.swob import Request
 import time
 from email.utils import parsedate
 
+import swift.common.middleware.event_notifications.filter_rules as filter_rules_module
+
 
 def get_s3_event_name(account, container, object, method):
     res = "s3"
@@ -51,7 +53,7 @@ def create_s3_event(req, app):
         "Records": {
             "eventVersion": "2.2",
             "eventSource": "aws:s3",
-            "eventTime": datetime.now().isoformat(),
+            "eventTime": datetime.now().isoformat(), # todo: check if req has timestamp
             "eventName": get_s3_event_name(account, container, object, method),
             "userIdentity":{
                 "principalId": req.environ.get("REMOTE_USER")
@@ -61,6 +63,7 @@ def create_s3_event(req, app):
             },
             "responseElements":{
                 "x-amz-request-id": req.environ.get("swift.trans_id")
+                # todo: x-amz-host-id
             },
             "s3":{
                 "s3SchemaVersion": "1.0",
@@ -118,11 +121,49 @@ class EventNotificationsMiddleware(WSGIContext):
             try:
                 configJson = json.loads(config)
                 jsonschema.validate(instance=configJson, schema=self.schema)
+
+                for _, event_destination_configuration in configJson.items():
+                    for event_configuration in event_destination_configuration:
+                        for _, filter_item in event_configuration.get("Filter", {}).items():
+                            for filter_rule in filter_item["FilterRules"]:
+                                getattr(filter_rules_module, filter_rule["Name"].title() + "Rule")
                 req.headers[get_sys_meta_prefix('container') + 'notifications'] = config
             except Exception as err:
                 c.put(str(err))
                 result = False
         return result
+
+    def __should_notify(self, req, event_configurations):
+        destinations = []
+        version, account, container, object = split_path(req.environ['PATH_INFO'], 1, 4, rest_with_last=True)
+        method = req.environ.get('swift.orig_req_method', req.request.method)
+        event_type = get_s3_event_name(account, container, object, method)
+        for destination_key, event_destination_configuration in event_configurations.items():
+            for event_configuration in event_destination_configuration:
+                matched_event_type = False
+                filter_rule_satisfied = not "Filter" in event_configuration
+                for allowed_event_type in event_configuration["Events"]:
+                    allowed_event_type = allowed_event_type[:-1] if allowed_event_type.endswith("*") else allowed_event_type
+                    if event_type.startswith(allowed_event_type):
+                        matched_event_type = True
+                        break
+                if matched_event_type and not filter_rule_satisfied:
+                    for _, filter_item in event_configuration.get("Filter", {}).items():
+                        filter_rule_satisfied = True
+                        for filter_rule in filter_item["FilterRules"]:
+                            filter = getattr(filter_rules_module, filter_rule["Name"].title() + "Rule")()
+                            if not filter(self.app, req, filter_rule["Value"]):
+                                filter_rule_satisfied = False
+                                break
+                        if filter_rule_satisfied:
+                            break
+                if matched_event_type and filter_rule_satisfied:
+                    destinations.append(destination_key)
+                    break
+        return destinations
+
+
+
 
 
     @wsgify
@@ -143,7 +184,8 @@ class EventNotificationsMiddleware(WSGIContext):
                 event_notifications_configuration = container.get("sysmeta", {}).get("notifications")
                 if event_notifications_configuration:
                     try:
-                        c.put(json.dumps(self.__create_payload(resp)))
+                        if self.__should_notify(resp, json.loads(event_notifications_configuration)):
+                            c.put(json.dumps(self.__create_payload(resp)))
                     except Exception as e:
                         c.put(str(e))
         return resp
