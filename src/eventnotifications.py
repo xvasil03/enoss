@@ -84,6 +84,18 @@ def create_s3_event(req, app):
     }
     return event
 
+def create_s3_test_event(req):
+    version, account, container, object = split_path(req.environ['PATH_INFO'], 1, 4, rest_with_last=True)
+    event = {
+        "Service": "Amazon S3",
+        "Event": "s3:TestEvent",
+        "Time": datetime.now().isoformat(),
+        "Bucket": container,
+        "RequestId": req.environ.get("swift.trans_id"),
+        "HostId":"TODO"
+    }
+    return event
+
 class EventNotificationsMiddleware(WSGIContext):
     def __init__(self, app, conf):
         self.app = app
@@ -100,6 +112,7 @@ class EventNotificationsMiddleware(WSGIContext):
         return res
 
     def __validate_config(self, req, c):
+        result = True
         config = req.body_file.read()
         if config:
             try:
@@ -108,24 +121,31 @@ class EventNotificationsMiddleware(WSGIContext):
                 req.headers[get_sys_meta_prefix('container') + 'notifications'] = config
             except Exception as err:
                 c.put(str(err))
+                result = False
+        return result
 
 
     @wsgify
     def __call__(self, req):
         c = Connection("localhost", 11300)
+        event_configation_changed = False
         if req.method == "POST" and req.query_string == "notification":
-            self.__validate_config(req, c)
+            event_configation_changed = self.__validate_config(req, c)
         # swift can call it self recursively => we want only one notification per user request
         req.headers["X-Backend-EventNotification-Ignore"] = True
         resp = req.get_response(self.app)
+
         if not resp.headers.get("X-Backend-EventNotification-Ignore"):
-            container = get_container_info(resp.environ, self.app)
-            event_notifications_configuration = container.get("sysmeta", {}).get("notifications")
-            if event_notifications_configuration:
-                try:
-                    c.put(json.dumps(self.__create_payload(resp)))
-                except Exception as e:
-                    c.put(str(e))
+            if event_configation_changed:
+                c.put(str(create_s3_test_event(resp)))
+            else:
+                container = get_container_info(resp.environ, self.app)
+                event_notifications_configuration = container.get("sysmeta", {}).get("notifications")
+                if event_notifications_configuration:
+                    try:
+                        c.put(json.dumps(self.__create_payload(resp)))
+                    except Exception as e:
+                        c.put(str(e))
         return resp
 
 
