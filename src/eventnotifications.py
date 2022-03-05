@@ -16,27 +16,9 @@ import time
 from email.utils import parsedate
 
 import swift.common.middleware.event_notifications.filter_rules as filter_rules_module
+from swift.common.middleware.event_notifications.utils import get_s3_event_name
 
-
-def get_s3_event_name(account, container, object, method):
-    res = "s3"
-    if object:
-        res += ":Object"
-    elif container:
-        res += ":Bucket"
-    else:
-        res += ":Account"
-
-    if method in ["PUT", "POST", "COPY"]:
-        res += "Created"
-    elif method in ["DELETE"]:
-        res += "Deleted"
-    else:
-        res += "Accessed"
-
-    res += ":" + method.title()
-
-    return res
+from swift.common.middleware.event_notifications.configuration import S3ConfigurationValidator, S3NotifiationConfiguration
 
 def create_s3_event(req, app):
     version, account, container, object = split_path(req.environ['PATH_INFO'], 1, 4, rest_with_last=True)
@@ -103,9 +85,8 @@ class EventNotificationsMiddleware(WSGIContext):
     def __init__(self, app, conf):
         self.app = app
         self.logger = get_logger(conf, log_route='eventnotifications')
+        self.configuration_validator = S3ConfigurationValidator('/usr/local/src/swift/swift/common/middleware/event_notifications/configuration-schema.json')
         super(EventNotificationsMiddleware, self).__init__(app)
-        with open('/usr/local/src/swift/swift/common/middleware/event_notifications/configuration-schema.json', 'r') as file:
-            self.schema = json.load(file)
 
     def __create_payload(self, req):
         try:
@@ -114,64 +95,15 @@ class EventNotificationsMiddleware(WSGIContext):
             res = str(e)
         return res
 
-    def __validate_config(self, req, c):
-        result = True
-        config = req.body_file.read()
-        if config:
-            try:
-                configJson = json.loads(config)
-                jsonschema.validate(instance=configJson, schema=self.schema)
-
-                for _, event_destination_configuration in configJson.items():
-                    for event_configuration in event_destination_configuration:
-                        for _, filter_item in event_configuration.get("Filter", {}).items():
-                            for filter_rule in filter_item["FilterRules"]:
-                                getattr(filter_rules_module, filter_rule["Name"].title() + "Rule")
-                req.headers[get_sys_meta_prefix('container') + 'notifications'] = config
-            except Exception as err:
-                c.put(str(err))
-                result = False
-        return result
-
-    def __should_notify(self, req, event_configurations):
-        destinations = []
-        version, account, container, object = split_path(req.environ['PATH_INFO'], 1, 4, rest_with_last=True)
-        method = req.environ.get('swift.orig_req_method', req.request.method)
-        event_type = get_s3_event_name(account, container, object, method)
-        for destination_key, event_destination_configuration in event_configurations.items():
-            for event_configuration in event_destination_configuration:
-                matched_event_type = False
-                filter_rule_satisfied = not "Filter" in event_configuration
-                for allowed_event_type in event_configuration["Events"]:
-                    allowed_event_type = allowed_event_type[:-1] if allowed_event_type.endswith("*") else allowed_event_type
-                    if event_type.startswith(allowed_event_type):
-                        matched_event_type = True
-                        break
-                if matched_event_type and not filter_rule_satisfied:
-                    for _, filter_item in event_configuration.get("Filter", {}).items():
-                        filter_rule_satisfied = True
-                        for filter_rule in filter_item["FilterRules"]:
-                            filter = getattr(filter_rules_module, filter_rule["Name"].title() + "Rule")()
-                            if not filter(self.app, req, filter_rule["Value"]):
-                                filter_rule_satisfied = False
-                                break
-                        if filter_rule_satisfied:
-                            break
-                if matched_event_type and filter_rule_satisfied:
-                    destinations.append(destination_key)
-                    break
-        return destinations
-
-
-
-
-
     @wsgify
     def __call__(self, req):
         c = Connection("localhost", 11300)
         event_configation_changed = False
         if req.method == "POST" and req.query_string == "notification":
-            event_configation_changed = self.__validate_config(req, c)
+            config = req.body_file.read()
+            if self.configuration_validator.validate(config):
+                req.headers[get_sys_meta_prefix('container') + 'notifications'] = config
+                event_configation_changed = True
         # swift can call it self recursively => we want only one notification per user request
         req.headers["X-Backend-EventNotification-Ignore"] = True
         resp = req.get_response(self.app)
@@ -184,10 +116,14 @@ class EventNotificationsMiddleware(WSGIContext):
                 event_notifications_configuration = container.get("sysmeta", {}).get("notifications")
                 if event_notifications_configuration:
                     try:
-                        if self.__should_notify(resp, json.loads(event_notifications_configuration)):
+                        s3_configuration = S3NotifiationConfiguration(event_notifications_configuration)
+                        if s3_configuration.get_satisfied_destinations(self.app, resp):
                             c.put(json.dumps(self.__create_payload(resp)))
                     except Exception as e:
                         c.put(str(e))
+
+
+
         return resp
 
 
