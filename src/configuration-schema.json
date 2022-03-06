@@ -18,6 +18,9 @@
           "TargetParams": {
             "type": "object"
           },
+          "PayloadStructure": {
+            "type": "string"
+          },
           "Events": {
             "type": "array",
             "minItems": 1,

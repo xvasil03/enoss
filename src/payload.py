@@ -6,7 +6,10 @@ import time
 from swift.common.utils import split_path
 from swift.common.middleware.event_notifications.utils import get_s3_event_name
 
-class NotificationPayloadI(object, metaclass=abc.ABCMeta):
+def get_payload_handler_name(payload_structure_name):
+    return payload_structure_name.title() + "Payload"
+
+class PayloadI(object, metaclass=abc.ABCMeta):
     def __init__(self, conf):
         self.conf = conf
 
@@ -19,7 +22,7 @@ class NotificationPayloadI(object, metaclass=abc.ABCMeta):
         raise NotImplementedError('create_payload is not implemented')
 
 
-class S3NotificationPayload(NotificationPayloadI):
+class S3Payload(PayloadI):
 
     def create_test_payload(self, app, request):
         version, account, container, object = split_path(request.environ['PATH_INFO'], 1, 4, rest_with_last=True)

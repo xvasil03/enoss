@@ -61,6 +61,7 @@ class S3NotifiationConfiguration(object):
             self.config = config
             self.id = config["Id"]
             self.allowed_events = config["Events"]
+            self.payload_type = config.get("PayloadStructure", "s3")
             self.filters = [self.FilterConfiguration(filter_key, filter_config) for filter_key, filter_config in config.get("Filter", {}).items()]
 
         def is_allowed_event(self, request):

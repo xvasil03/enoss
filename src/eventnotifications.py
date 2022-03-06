@@ -11,10 +11,11 @@ from swift.common.wsgi import WSGIContext
 from swift.common.swob import Request
 
 import swift.common.middleware.event_notifications.destination as destination_module
+import swift.common.middleware.event_notifications.payload as payload_module
 
 from swift.common.middleware.event_notifications.configuration import S3ConfigurationValidator, S3NotifiationConfiguration
-from swift.common.middleware.event_notifications.payload import S3NotificationPayload
 from swift.common.middleware.event_notifications.destination import BeanstalkdDestination
+from swift.common.middleware.event_notifications.payload import get_payload_handler_name
 
 from pystalkd.Beanstalkd import Connection as BeanstalkdConnection
 
@@ -24,12 +25,10 @@ class EventNotificationsMiddleware(WSGIContext):
         self.conf = conf
         self.logger = get_logger(conf, log_route='eventnotifications')
         self.configuration_validator = S3ConfigurationValidator('/usr/local/src/swift/swift/common/middleware/event_notifications/configuration-schema.json')
-        self.s3_payload = S3NotificationPayload(self.conf)
         self.destinations = {}
         for destination_name, destination_conf in json.loads(self.conf.get("destinations", {})).items():
             destination_class = getattr(destination_module, destination_module.get_destination_class_name(destination_conf["handler"]))
             self.destinations[destination_name] = destination_class(destination_conf)
-
         super(EventNotificationsMiddleware, self).__init__(app)
 
     @wsgify
@@ -51,10 +50,12 @@ class EventNotificationsMiddleware(WSGIContext):
 
                 if event_notifications_configuration:
                     s3_configuration = S3NotifiationConfiguration(event_notifications_configuration)
-                    for destination_name, destination_configuration in s3_configuration.get_satisfied_destinations(self.app, resp).items():
-                        destination_handler = self.destinations[destination_name]
-                        payload = self.s3_payload.create_test_payload(self.app, resp) if event_configation_changed else self.s3_payload.create_payload(self.app, resp)
-                        destination_handler.send_notification(destination_configuration, payload)
+                    for destination_name, destination_configurations in s3_configuration.get_satisfied_destinations(self.app, resp).items():
+                        for destination_configuration in destination_configurations:
+                            destination_handler = self.destinations[destination_name]
+                            payload_handler = getattr(payload_module, get_payload_handler_name(destination_configuration.payload_type))(self.conf)
+                            payload = payload_handler.create_test_payload(self.app, resp) if event_configation_changed else payload_handler.create_payload(self.app, resp)
+                            destination_handler.send_notification(destination_configuration, payload)
         except Exception as e:
             self.destinations["beanstalkd"].connection.put(str(e))
 
