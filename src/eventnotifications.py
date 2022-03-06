@@ -33,18 +33,24 @@ class EventNotificationsMiddleware(WSGIContext):
 
     @wsgify
     def __call__(self, req):
-        event_configation_changed = False
-        if req.method == "POST" and req.query_string == "notification":
-            config = req.body_file.read()
-            if self.configuration_validator.validate(config):
-                req.headers[get_sys_meta_prefix('container') + 'notifications'] = config
-                event_configation_changed = True
-        # swift can call it self recursively => we want only one notification per user request
-        req.headers["X-Backend-EventNotification-Ignore"] = True
-        resp = req.get_response(self.app)
+
+        try:
+            event_configation_changed = False
+            if req.method == "POST" and req.query_string == "notification":
+                config = req.body_file.read().strip()
+                if not config and False:
+                    req.headers[get_sys_meta_prefix('container') + 'notifications'] = ""
+                elif self.configuration_validator.validate(config):
+                    req.headers[get_sys_meta_prefix('container') + 'notifications'] = config
+            # swift can call it self recursively => we want only one notification per user request
+            req.headers["X-Backend-EventNotification-Ignore"] = True
+            resp = req.get_response(self.app)
+        except Exception as e:
+            self.destinations["beanstalkd"].connection.put("1:" + str(e))
 
         try:
             if not resp.headers.get("X-Backend-EventNotification-Ignore"):
+
                 container = get_container_info(resp.environ, self.app)
                 event_notifications_configuration = container.get("sysmeta", {}).get("notifications")
 
@@ -56,8 +62,12 @@ class EventNotificationsMiddleware(WSGIContext):
                             payload_handler = getattr(payload_module, get_payload_handler_name(destination_configuration.payload_type))(self.conf)
                             payload = payload_handler.create_test_payload(self.app, resp) if event_configation_changed else payload_handler.create_payload(self.app, resp)
                             destination_handler.send_notification(destination_configuration, payload)
+                if req.method == "GET" and req.query_string.startswith("notification") and resp.is_success: #todo ACL
+                    resp.body = str.encode(str(json.loads(event_notifications_configuration)) + '\n' \
+                        if event_notifications_configuration else "")
+
         except Exception as e:
-            self.destinations["beanstalkd"].connection.put(str(e))
+            self.destinations["beanstalkd"].connection.put("2:" + str(e))
 
         return resp
 
