@@ -4,6 +4,9 @@ import json
 
 from pystalkd.Beanstalkd import Connection as BeanstalkdConnection
 
+def get_destination_class_name(destination):
+    return destination.title() + "Destination"
+
 class DestinationI(object, metaclass=abc.ABCMeta):
     def __init__(self, conf):
         raise NotImplementedError('__init__ is not implemented')
@@ -13,8 +16,8 @@ class DestinationI(object, metaclass=abc.ABCMeta):
 
 class BeanstalkdDestination(DestinationI):
     def __init__(self, conf):
-        self.conf = json.loads(conf["beanstalkd"])
+        self.conf = conf
         self.connection = BeanstalkdConnection(self.conf["addr"], self.conf["port"]) #todo tube
 
-    def send_notification(self, notification):
+    def send_notification(self, invoking_configuration, notification):
         self.connection.put(json.dumps(notification))

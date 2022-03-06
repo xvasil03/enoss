@@ -5,11 +5,12 @@ from swift.common.request_helpers import get_sys_meta_prefix
 from swift.proxy.controllers.base import get_container_info, get_account_info, get_object_info
 from eventlet import Timeout
 import six
+import json
 
 from swift.common.wsgi import WSGIContext
 from swift.common.swob import Request
 
-import swift.common.middleware.event_notifications.filter_rules as filter_rules_module
+import swift.common.middleware.event_notifications.destination as destination_module
 
 from swift.common.middleware.event_notifications.configuration import S3ConfigurationValidator, S3NotifiationConfiguration
 from swift.common.middleware.event_notifications.payload import S3NotificationPayload
@@ -23,8 +24,12 @@ class EventNotificationsMiddleware(WSGIContext):
         self.conf = conf
         self.logger = get_logger(conf, log_route='eventnotifications')
         self.configuration_validator = S3ConfigurationValidator('/usr/local/src/swift/swift/common/middleware/event_notifications/configuration-schema.json')
-        self.beanstalkd = BeanstalkdDestination(self.conf)
         self.s3_payload = S3NotificationPayload(self.conf)
+        self.destinations = {}
+        for destination_name, destination_conf in json.loads(self.conf.get("destinations", {})).items():
+            destination_class = getattr(destination_module, destination_module.get_destination_class_name(destination_conf["handler"]))
+            self.destinations[destination_name] = destination_class(destination_conf)
+
         super(EventNotificationsMiddleware, self).__init__(app)
 
     @wsgify
@@ -41,20 +46,17 @@ class EventNotificationsMiddleware(WSGIContext):
 
         try:
             if not resp.headers.get("X-Backend-EventNotification-Ignore"):
-                if event_configation_changed:
-                    self.beanstalkd.send_notification(self.s3_payload.create_test_payload(self.app, resp))
-                else:
-                    container = get_container_info(resp.environ, self.app)
-                    event_notifications_configuration = container.get("sysmeta", {}).get("notifications")
-                    if event_notifications_configuration:
-                        try:
-                            s3_configuration = S3NotifiationConfiguration(event_notifications_configuration)
-                            if s3_configuration.get_satisfied_destinations(self.app, resp):
-                                self.beanstalkd.send_notification(self.s3_payload.create_payload(self.app, resp))
-                        except Exception as e:
-                            self.beanstalkd.connection.put(str(e))
+                container = get_container_info(resp.environ, self.app)
+                event_notifications_configuration = container.get("sysmeta", {}).get("notifications")
+
+                if event_notifications_configuration:
+                    s3_configuration = S3NotifiationConfiguration(event_notifications_configuration)
+                    for destination_name, destination_configuration in s3_configuration.get_satisfied_destinations(self.app, resp).items():
+                        destination_handler = self.destinations[destination_name]
+                        payload = self.s3_payload.create_test_payload(self.app, resp) if event_configation_changed else self.s3_payload.create_payload(self.app, resp)
+                        destination_handler.send_notification(destination_configuration, payload)
         except Exception as e:
-            self.beanstalkd.connection.put(str(e))
+            self.destinations["beanstalkd"].connection.put(str(e))
 
         return resp
 

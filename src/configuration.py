@@ -25,7 +25,7 @@ class S3ConfigurationValidator(object):
                 for event_configuration in destinations_configuration:
                     for _, filter_item in event_configuration.get("Filter", {}).items():
                         for filter_rule in filter_item["FilterRules"]:
-                            getattr(filter_rules_module, filter_rules_module.create_rule_class_name(filter_rule["Name"]))
+                            getattr(filter_rules_module, filter_rules_module.get_rule_class_name(filter_rule["Name"]))
         except:
             raise Exception("Unsupported rule operator")
 
@@ -85,8 +85,10 @@ class S3NotifiationConfiguration(object):
     def __init__(self, config):
         self.config = json.loads(config)
         self.destinations_configurations = {}
-        for destination_name, destination_configurations in self.config.items():
+        for destination_configurations_name, destination_configurations in self.config.items():
             for destination_configuration in destination_configurations:
+                # <destination_name>Configrations => <destination_name>
+                destination_name = destination_configurations_name.rstrip("Configrations").lower()
                 self.destinations_configurations.setdefault(destination_name, []).append(self.DestinationConfiguration(destination_configuration))
 
     def get_satisfied_destinations(self, app, request):

@@ -3,7 +3,7 @@ import abc
 from swift.proxy.controllers.base import get_container_info, get_account_info, get_object_info
 from swift.common.utils import split_path
 
-def create_rule_class_name(rule_name):
+def get_rule_class_name(rule_name):
     return rule_name.title() + "Rule"
 
 class RuleI(object, metaclass=abc.ABCMeta):
@@ -11,7 +11,7 @@ class RuleI(object, metaclass=abc.ABCMeta):
         self.value = value
 
     @abc.abstractmethod
-    def __call__(self, app, request, filter_value):
+    def __call__(self, app, request):
         raise NotImplementedError('__call__ is not implemented')
 
 
