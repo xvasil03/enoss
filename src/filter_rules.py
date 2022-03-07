@@ -16,7 +16,7 @@ class PrefixRule(RuleI):
     def __call__(self, app, request):
         version, account, container, object = split_path(request.environ['PATH_INFO'], 1, 4, rest_with_last=True)
         if object:
-            object.startswith(self.value)
+            return object.startswith(self.value)
         elif container:
             return container.startswith(self.value)
         return False
@@ -25,7 +25,7 @@ class SufixRule(RuleI):
     def __call__(self, app, request):
         version, account, container, object = split_path(request.environ['PATH_INFO'], 1, 4, rest_with_last=True)
         if object:
-            object.endswith(self.value)
+            return object.endswith(self.value)
         elif container:
             return container.endswith(self.value)
         return False

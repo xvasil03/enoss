@@ -34,45 +34,106 @@ class EventNotificationsMiddleware(WSGIContext):
             for payload_handler_name, payload_handler in get_payload_handlers([payload_module]).items()}
         super(EventNotificationsMiddleware, self).__init__(app)
 
+    def get_upper_notification_configuration(self, account, container, object, request):
+        if object:
+            info = get_container_info(request.environ, self.app)
+        elif container:
+            info = get_account_info(request.environ, self.app)
+        else:
+            # todo: for requests on account level read notification config from file
+            info = {}
+
+        event_notifications_configuration = info.get("sysmeta", {}).get("notifications")
+        return event_notifications_configuration
+
+    def get_current_level(self, account, container, object):
+        if object:
+            return "object"
+        elif container:
+            return "container"
+        elif account:
+            return "account"
+        else:
+            return None
+
+    def get_upper_level(self, account, container, object):
+        if object:
+            return "container"
+        elif container:
+            return "account"
+        else:
+            return None
+
+    def send_test_notification(self, curr_level, req):
+        # todo check if curr_level is not None
+        info_method = get_container_info if curr_level == "container" else get_account_info
+        upper_level_info = info_method(req.environ, self.app)
+        event_notifications_configuration = upper_level_info.get("sysmeta", {}).get("notifications")
+        if event_notifications_configuration:
+            s3_configuration = S3NotifiationConfiguration(event_notifications_configuration)
+            for destination_name, destination_configurations in s3_configuration.destinations_configurations.items():
+                destination_handler = self.destination_handlers[get_destination_handler_name(destination_name)]
+                for destination_configuration in destination_configurations:
+                    payload_handler = self.payload_handlers[get_payload_handler_name(destination_configuration.payload_type)]
+                    payload = payload_handler.create_test_payload(self.app, req)
+                    destination_handler.send_notification(destination_configuration, payload)
+
+    def send_notification(self, upper_level, req):
+        # todo check if upper_level is not None
+        info_method = get_container_info if upper_level == "container" else get_account_info
+        upper_level_info = info_method(req.environ, self.app)
+        event_notifications_configuration = upper_level_info.get("sysmeta", {}).get("notifications")
+        if event_notifications_configuration:
+            s3_configuration = S3NotifiationConfiguration(event_notifications_configuration)
+            for destination_name, destination_configurations in s3_configuration.get_satisfied_destinations(self.app, req).items():
+                destination_handler = self.destination_handlers[get_destination_handler_name(destination_name)]
+                for destination_configuration in destination_configurations:
+                    payload_handler = self.payload_handlers[get_payload_handler_name(destination_configuration.payload_type)]
+                    payload = payload_handler.create_payload(self.app, req)
+                    destination_handler.send_notification(destination_configuration, payload)
+
     @wsgify
     def __call__(self, req):
+        if req.headers.get("X-Backend-EventNotification-Ignore"):
+            return req.get_response(self.app)
+        # swift can call it self recursively => we want only one notification per user request
+        req.headers["X-Backend-EventNotification-Ignore"] = True
+
 
         try:
+            version, account, container, object = split_path(req.environ['PATH_INFO'], 1, 4, rest_with_last=True)
+            curr_level = self.get_current_level(account, container, object)
+            upper_level = self.get_upper_level(account, container, object)
             event_configation_changed = False
             if req.method == "POST" and req.query_string == "notification":
+                if not curr_level in ["account", "container"]:
+                    # cant configure notifications on object level
+                    return Response(request=req, status=400, body=b"Invalid configuration", content_type="text/plain")
+
+                notification_sysmeta = get_sys_meta_prefix(curr_level) + 'notifications'
                 config = req.body_file.read().strip()
                 if not config:
-                    req.headers[get_sys_meta_prefix('container') + 'notifications'] = ""
+                    req.headers[notification_sysmeta] = ""
                 else:
                     if self.configuration_validator.validate(self.destination_handlers, config):
-                        req.headers[get_sys_meta_prefix('container') + 'notifications'] = config
+                        req.headers[notification_sysmeta] = config
                     else:
                         # todo: send info about which part of configuration is invalid
                         return Response(request=req, status=400, body=b"Invalid configuration", content_type="text/plain")
                 event_configation_changed = True
-            # swift can call it self recursively => we want only one notification per user request
-            req.headers["X-Backend-EventNotification-Ignore"] = True
             resp = req.get_response(self.app)
         except Exception as e:
             self.destination_handlers[get_destination_handler_name("beanstalkd")].connection.put("1:" + str(e))
 
         try:
-            if not resp.headers.get("X-Backend-EventNotification-Ignore"):
-
-                container = get_container_info(resp.environ, self.app)
-                event_notifications_configuration = container.get("sysmeta", {}).get("notifications")
-
-                if event_notifications_configuration:
-                    s3_configuration = S3NotifiationConfiguration(event_notifications_configuration)
-                    for destination_name, destination_configurations in s3_configuration.get_satisfied_destinations(self.app, resp).items():
-                        destination_handler = self.destination_handlers[get_destination_handler_name(destination_name)]
-                        for destination_configuration in destination_configurations:
-                            payload_handler = self.payload_handlers[get_payload_handler_name(destination_configuration.payload_type)]
-                            payload = payload_handler.create_test_payload(self.app, resp) if event_configation_changed else payload_handler.create_payload(self.app, resp)
-                            destination_handler.send_notification(destination_configuration, payload)
-                if req.method == "GET" and req.query_string.startswith("notification") and resp.is_success: #todo ACL
-                    resp.body = str.encode(str(json.loads(event_notifications_configuration)) + '\n' \
-                        if event_notifications_configuration else "")
+            if event_configation_changed:
+                self.send_test_notification(curr_level, resp)
+            if upper_level:
+                self.send_notification(upper_level, resp)
+            # todo: better way to test query_string
+            if req.method == "GET" and req.query_string and req.query_string.startswith("notification") and resp.is_success: #todo ACL
+                resp.body = str.encode(str(json.loads(event_notifications_configuration)) + '\n' \
+                    if event_notifications_configuration else "")
 
         except Exception as e:
             self.destination_handlers[get_destination_handler_name("beanstalkd")].connection.put("2:" + str(e))

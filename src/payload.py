@@ -2,6 +2,7 @@
 import abc
 from datetime import datetime
 import time
+from email.utils import parsedate
 
 from swift.common.utils import split_path
 from swift.common.middleware.event_notifications.utils import get_s3_event_name
