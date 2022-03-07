@@ -3,10 +3,13 @@ import jsonschema
 
 from swift.common.utils import split_path
 
-from swift.common.middleware.event_notifications.utils import get_s3_event_name
+from swift.common.middleware.event_notifications.utils import get_s3_event_name, get_rule_handlers, \
+    get_rule_handler_name, get_destination_handler_name
 from swift.common.middleware.event_notifications.constants import supported_s3_events
+
 import swift.common.middleware.event_notifications.filter_rules as filter_rules_module
 
+filter_rule_handlers = get_rule_handlers([filter_rules_module])
 
 class S3ConfigurationValidator(object):
     def __init__(self, schema_path):
@@ -20,22 +23,25 @@ class S3ConfigurationValidator(object):
                     raise Exception("Unsupported event type")
 
     def validate_rules(self, config):
-        try:
-            for _, destinations_configuration in config.items():
-                for event_configuration in destinations_configuration:
-                    for _, filter_item in event_configuration.get("Filter", {}).items():
-                        for filter_rule in filter_item["FilterRules"]:
-                            getattr(filter_rules_module, filter_rules_module.get_rule_class_name(filter_rule["Name"]))
-        except:
-            raise Exception("Unsupported rule operator")
+        for _, destinations_configuration in config.items():
+            for event_configuration in destinations_configuration:
+                for _, filter_item in event_configuration.get("Filter", {}).items():
+                    for filter_rule in filter_item["FilterRules"]:
+                        if get_rule_handler_name(filter_rule["Name"]) not in filter_rule_handlers:
+                            raise Exception("Unsupported rule operator")
 
+    def validate_destinations(self, destination_handlers, config):
+        for destination_name in config:
+            if get_destination_handler_name(destination_name.rstrip("Configrations")) not in destination_handlers:
+                raise Exception("Unsupported destination")
 
-    def validate(self, config):
+    def validate(self, destination_handlers, config):
         try:
             config_json = json.loads(config)
             jsonschema.validate(instance=config_json, schema=self.schema)
             self.validate_event_type(config_json)
             self.validate_rules(config_json)
+            self.validate_destinations(destination_handlers, config_json)
         except Exception as e:
             return False
         return True
@@ -51,8 +57,8 @@ class S3NotifiationConfiguration(object):
                 self.config = config
                 self.rules = []
                 for rule in config["FilterRules"]:
-                    rule_operator = getattr(filter_rules_module, rule["Name"].title() + "Rule")
-                    self.rules.append(rule_operator(rule["Value"]))
+                    rule_handler = filter_rule_handlers[get_rule_handler_name(rule["Name"])]
+                    self.rules.append(rule_handler(rule["Value"]))
 
             def does_satisfy(self, app, request):
                 return all(rule(app, request) for rule in self.rules)

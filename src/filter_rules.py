@@ -3,9 +3,6 @@ import abc
 from swift.proxy.controllers.base import get_container_info, get_account_info, get_object_info
 from swift.common.utils import split_path
 
-def get_rule_class_name(rule_name):
-    return rule_name.title() + "Rule"
-
 class RuleI(object, metaclass=abc.ABCMeta):
     def __init__(self, value):
         self.value = value

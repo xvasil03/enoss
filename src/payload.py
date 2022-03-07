@@ -6,9 +6,6 @@ import time
 from swift.common.utils import split_path
 from swift.common.middleware.event_notifications.utils import get_s3_event_name
 
-def get_payload_handler_name(payload_structure_name):
-    return payload_structure_name.title() + "Payload"
-
 class PayloadI(object, metaclass=abc.ABCMeta):
     def __init__(self, conf):
         self.conf = conf
