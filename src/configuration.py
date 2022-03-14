@@ -4,7 +4,7 @@ import jsonschema
 from swift.common.utils import split_path
 
 from swift.common.middleware.event_notifications.utils import get_s3_event_name, get_rule_handlers, \
-    get_rule_handler_name, get_destination_handler_name
+    get_rule_handler_name, get_destination_handler_name, get_payload_handler_name
 from swift.common.middleware.event_notifications.constants import supported_s3_events
 
 import swift.common.middleware.event_notifications.filter_rules as filter_rules_module
@@ -35,13 +35,20 @@ class S3ConfigurationValidator(object):
             if get_destination_handler_name(destination_name.rstrip("Configrations")) not in destination_handlers:
                 raise Exception("Unsupported destination")
 
-    def validate(self, destination_handlers, config):
+    def validate_payload_structure(self, payload_handlers, config):
+        for _, destinations_configuration in config.items():
+            for event_configuration in destinations_configuration:
+                if get_payload_handler_name(event_configuration.get("PayloadStructure", "s3")) not in payload_handlers:
+                    raise Exception("Unsupported payload structure")
+
+    def validate(self, destination_handlers, payload_handlers, config):
         try:
             config_json = json.loads(config)
             jsonschema.validate(instance=config_json, schema=self.schema)
             self.validate_event_type(config_json)
             self.validate_rules(config_json)
             self.validate_destinations(destination_handlers, config_json)
+            self.validate_payload_structure(payload_handlers, config_json)
         except Exception as e:
             return False
         return True

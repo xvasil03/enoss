@@ -21,13 +21,13 @@ from swift.common.middleware.event_notifications.utils import get_payload_handle
 from pystalkd.Beanstalkd import Connection as BeanstalkdConnection
 
 class EventNotificationsMiddleware(WSGIContext):
-    def __init__(self, app, conf):
+    def __init__(self, app, conf, logger=None):
         self.app = app
         self.conf = conf
-        self.logger = get_logger(conf, log_route='eventnotifications')
-        self.configuration_validator = S3ConfigurationValidator('/usr/local/src/swift/swift/common/middleware/event_notifications/configuration-schema.json')
+        self.logger = logger or get_logger(conf, log_route='eventnotifications')
+        self.configuration_validator = S3ConfigurationValidator(self.conf["s3_schema"])
         self.destination_handlers = {}
-        destinations_conf = json.loads(self.conf.get("destinations", {}))
+        destinations_conf = json.loads(self.conf.get("destinations", "{}"))
         self.destination_handlers = {destination_handler_name: destination_handler(destinations_conf) \
             for destination_handler_name, destination_handler in get_destination_handlers([destination_module]).items()}
         self.payload_handlers = {payload_handler_name: payload_handler(self.conf) \
@@ -75,8 +75,8 @@ class EventNotificationsMiddleware(WSGIContext):
                 destination_handler = self.destination_handlers[get_destination_handler_name(destination_name)]
                 for destination_configuration in destination_configurations:
                     payload_handler = self.payload_handlers[get_payload_handler_name(destination_configuration.payload_type)]
-                    payload = payload_handler.create_test_payload(self.app, req)
-                    destination_handler.send_notification(destination_configuration, payload)
+                    payload = payload_handler.create_test_payload(self.app, req, destination_configuration)
+                    destination_handler.send_notification(payload)
 
     def send_notification(self, upper_level, req):
         # todo check if upper_level is not None
@@ -89,8 +89,8 @@ class EventNotificationsMiddleware(WSGIContext):
                 destination_handler = self.destination_handlers[get_destination_handler_name(destination_name)]
                 for destination_configuration in destination_configurations:
                     payload_handler = self.payload_handlers[get_payload_handler_name(destination_configuration.payload_type)]
-                    payload = payload_handler.create_payload(self.app, req)
-                    destination_handler.send_notification(destination_configuration, payload)
+                    payload = payload_handler.create_payload(self.app, req, destination_configuration)
+                    destination_handler.send_notification(payload)
 
     @wsgify
     def __call__(self, req):
@@ -115,7 +115,7 @@ class EventNotificationsMiddleware(WSGIContext):
                 if not config:
                     req.headers[notification_sysmeta] = ""
                 else:
-                    if self.configuration_validator.validate(self.destination_handlers, config):
+                    if self.configuration_validator.validate(self.destination_handlers, self.payload_handlers, config):
                         req.headers[notification_sysmeta] = config
                     else:
                         # todo: send info about which part of configuration is invalid

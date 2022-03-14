@@ -12,17 +12,17 @@ class PayloadI(object, metaclass=abc.ABCMeta):
         self.conf = conf
 
     @abc.abstractmethod
-    def create_test_payload(self, app, request):
+    def create_test_payload(self, app, request, invoking_configuration):
         raise NotImplementedError('create_test_payload is not implemented')
 
     @abc.abstractmethod
-    def create_payload(self, app, request):
+    def create_payload(self, app, request, invoking_configuration):
         raise NotImplementedError('create_payload is not implemented')
 
 
 class S3Payload(PayloadI):
 
-    def create_test_payload(self, app, request):
+    def create_test_payload(self, app, request, invoking_configuration):
         version, account, container, object = split_path(request.environ['PATH_INFO'], 1, 4, rest_with_last=True)
         event = {
             "Service": "Amazon S3",
@@ -34,7 +34,7 @@ class S3Payload(PayloadI):
         }
         return event
 
-    def create_payload(self, app, request):
+    def create_payload(self, app, request, invoking_configuration):
         version, account, container, object = split_path(request.environ['PATH_INFO'], 1, 4, rest_with_last=True)
         method = request.environ.get('swift.orig_req_method', request.request.method)
         object_vesion_id = request.headers.get("X-Object-Version-Id", '')
