@@ -10,17 +10,16 @@ import json
 from swift.common.wsgi import WSGIContext
 from swift.common.swob import Request, Response
 
-import swift.common.middleware.event_notifications.destination as destination_module
-import swift.common.middleware.event_notifications.payload as payload_module
+import swift.common.middleware.enoss.destinations as destinations_module
+import swift.common.middleware.enoss.payloads as payloads_module
 
-from swift.common.middleware.event_notifications.configuration import S3ConfigurationValidator, S3NotifiationConfiguration
-from swift.common.middleware.event_notifications.destination import BeanstalkdDestination
-from swift.common.middleware.event_notifications.utils import get_payload_handlers, get_destination_handlers, \
+from swift.common.middleware.enoss.configuration import S3ConfigurationValidator, S3NotifiationConfiguration
+from swift.common.middleware.enoss.utils import get_payload_handlers, get_destination_handlers, \
     get_payload_handler_name, get_destination_handler_name
 
 from pystalkd.Beanstalkd import Connection as BeanstalkdConnection
 
-class EventNotificationsMiddleware(WSGIContext):
+class ENOSSMiddleware(WSGIContext):
     def __init__(self, app, conf, logger=None):
         self.app = app
         self.conf = conf
@@ -29,20 +28,13 @@ class EventNotificationsMiddleware(WSGIContext):
         self.destination_handlers = {}
         destinations_conf = json.loads(self.conf.get("destinations", "{}"))
         self.destination_handlers = {destination_handler_name: destination_handler(destinations_conf) \
-            for destination_handler_name, destination_handler in get_destination_handlers([destination_module]).items()}
+            for destination_handler_name, destination_handler in get_destination_handlers([destinations_module]).items()}
         self.payload_handlers = {payload_handler_name: payload_handler(self.conf) \
-            for payload_handler_name, payload_handler in get_payload_handlers([payload_module]).items()}
-        super(EventNotificationsMiddleware, self).__init__(app)
+            for payload_handler_name, payload_handler in get_payload_handlers([payloads_module]).items()}
+        super(ENOSSMiddleware, self).__init__(app)
 
-    def get_upper_notification_configuration(self, account, container, object, request):
-        if object:
-            info = get_container_info(request.environ, self.app)
-        elif container:
-            info = get_account_info(request.environ, self.app)
-        else:
-            # todo: for requests on account level read notification config from file
-            info = {}
-
+    def get_notification_configuration(self, info_method, environ):
+        info = info_method(environ, self.app)
         event_notifications_configuration = info.get("sysmeta", {}).get("notifications")
         return event_notifications_configuration
 
@@ -67,8 +59,7 @@ class EventNotificationsMiddleware(WSGIContext):
     def send_test_notification(self, curr_level, req):
         # todo check if curr_level is not None
         info_method = get_container_info if curr_level == "container" else get_account_info
-        upper_level_info = info_method(req.environ, self.app)
-        event_notifications_configuration = upper_level_info.get("sysmeta", {}).get("notifications")
+        event_notifications_configuration = self.get_notification_configuration(info_method, req.environ)
         if event_notifications_configuration:
             s3_configuration = S3NotifiationConfiguration(event_notifications_configuration)
             for destination_name, destination_configurations in s3_configuration.destinations_configurations.items():
@@ -81,8 +72,7 @@ class EventNotificationsMiddleware(WSGIContext):
     def send_notification(self, upper_level, req):
         # todo check if upper_level is not None
         info_method = get_container_info if upper_level == "container" else get_account_info
-        upper_level_info = info_method(req.environ, self.app)
-        event_notifications_configuration = upper_level_info.get("sysmeta", {}).get("notifications")
+        event_notifications_configuration = self.get_notification_configuration(info_method, req.environ)
         if event_notifications_configuration:
             s3_configuration = S3NotifiationConfiguration(event_notifications_configuration)
             for destination_name, destination_configurations in s3_configuration.get_satisfied_destinations(self.app, req).items():
@@ -99,6 +89,8 @@ class EventNotificationsMiddleware(WSGIContext):
         # swift can call it self recursively => we want only one notification per user request
         req.headers["X-Backend-EventNotification-Ignore"] = True
 
+        c = BeanstalkdConnection("localhost", 11300)
+        c.put("{'test': 1}")
 
         try:
             version, account, container, object = split_path(req.environ['PATH_INFO'], 1, 4, rest_with_last=True)
@@ -132,6 +124,8 @@ class EventNotificationsMiddleware(WSGIContext):
                 self.send_notification(upper_level, resp)
             # todo: better way to test query_string
             if req.method == "GET" and req.query_string and req.query_string.startswith("notification") and resp.is_success: #todo ACL
+                info_method = get_container_info if curr_level == "container" else get_account_info
+                event_notifications_configuration = self.get_notification_configuration(info_method, req.environ)
                 resp.body = str.encode(str(json.loads(event_notifications_configuration)) + '\n' \
                     if event_notifications_configuration else "")
 
@@ -141,10 +135,10 @@ class EventNotificationsMiddleware(WSGIContext):
         return resp
 
 
-def event_notifications_factory(global_conf, **local_conf):
+def enoss_factory(global_conf, **local_conf):
     conf = global_conf.copy()
     conf.update(local_conf)
 
     def event_notifications_filter(app):
-        return EventNotificationsMiddleware(app, conf)
+        return ENOSSMiddleware(app, conf)
     return event_notifications_filter

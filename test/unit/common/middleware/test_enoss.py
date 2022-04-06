@@ -7,18 +7,18 @@ import json
 
 from swift.common.swob import Request, Response
 
-from swift.common.middleware.event_notifications.eventnotifications import EventNotificationsMiddleware
-from swift.common.middleware.event_notifications.destination import DestinationI
-from swift.common.middleware.event_notifications.payload import PayloadI
-from swift.common.middleware.event_notifications.filter_rules import RuleI
-from swift.common.middleware.event_notifications.configuration import filter_rule_handlers
+from swift.common.middleware.enoss.enoss import ENOSSMiddleware
+from swift.common.middleware.enoss.destinations import IDestination
+from swift.common.middleware.enoss.payloads import IPayload
+from swift.common.middleware.enoss.filter_rules import IRule
+from swift.common.middleware.enoss.configuration import filter_rule_handlers
 
 from helpers import FakeSwift
 #from test.debug_logger import debug_logger
 from debug_logger import debug_logger
 
 #todo ORDER
-class TestEventNotifications(unittest.TestCase):
+class TestENOSS(unittest.TestCase):
 
     def setUp(self):
         self.fake_swift = FakeSwift()
@@ -45,15 +45,15 @@ class TestEventNotifications(unittest.TestCase):
             's3_schema': '/usr/local/src/swift/swift/common/middleware/event_notifications/configuration-schema.json'
         }
         # event notification middleware initialize all payload/destination/filter handlers
-        self.app = EventNotificationsMiddleware(self.fake_swift, app_conf, logger=self.logger)
+        self.app = ENOSSMiddleware(self.fake_swift, app_conf, logger=self.logger)
 
     def step2_handlers(self):
         for _, handler in self.app.destination_handlers.items():
-            self.assertIsInstance(handler, DestinationI)
+            self.assertIsInstance(handler, IDestination)
         for _, handler in self.app.payload_handlers.items():
-            self.assertIsInstance(handler, PayloadI)
+            self.assertIsInstance(handler, IPayload)
         for _, handler in filter_rule_handlers.items():
-            self.assertTrue(issubclass(handler, RuleI))
+            self.assertTrue(issubclass(handler, IRule))
 
     def step3_configuration(self):
         def validate_config(testing_conf):

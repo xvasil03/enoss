@@ -35,9 +35,10 @@ def get_payload_handler_name(payload_name):
 
 def __get_handlers(handler_modules, handler_suffix):
     handlers = {}
+    interface_class_name = "I" + handler_suffix.title()
     for handler_module in handler_modules:
         for (handler_name, handler_class) in inspect.getmembers(sys.modules[handler_module.__name__], inspect.isclass):
-            if handler_name.endswith(handler_suffix):
+            if handler_name.endswith(handler_suffix) and handler_name != interface_class_name:
                 handlers[handler_name] = handler_class
     return handlers
 

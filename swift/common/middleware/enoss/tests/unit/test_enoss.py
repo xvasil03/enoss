@@ -13,6 +13,7 @@ from swift.common.middleware.event_notifications.payload import PayloadI
 from swift.common.middleware.event_notifications.filter_rules import RuleI
 from swift.common.middleware.event_notifications.configuration import filter_rule_handlers
 
+#todo fix imports
 from helpers import FakeSwift
 #from test.debug_logger import debug_logger
 from debug_logger import debug_logger

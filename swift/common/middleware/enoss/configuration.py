@@ -3,11 +3,11 @@ import jsonschema
 
 from swift.common.utils import split_path
 
-from swift.common.middleware.event_notifications.utils import get_s3_event_name, get_rule_handlers, \
+from swift.common.middleware.enoss.utils import get_s3_event_name, get_rule_handlers, \
     get_rule_handler_name, get_destination_handler_name, get_payload_handler_name
-from swift.common.middleware.event_notifications.constants import supported_s3_events
+from swift.common.middleware.enoss.constants import supported_s3_events
 
-import swift.common.middleware.event_notifications.filter_rules as filter_rules_module
+import swift.common.middleware.enoss.filter_rules as filter_rules_module
 
 filter_rule_handlers = get_rule_handlers([filter_rules_module])
 
