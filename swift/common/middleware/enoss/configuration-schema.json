@@ -10,7 +10,7 @@
         "type": "object",
         "required": ["Id", "Events"],
         "additionalProperties": false,
-      	"properties": {
+        "properties": {
           "Id": {
             "type": "string"
           },
