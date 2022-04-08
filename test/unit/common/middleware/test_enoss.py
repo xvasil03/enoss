@@ -115,16 +115,22 @@ class TestENOSS(unittest.TestCase):
         self.s3_notification_configuration["BeanstalkdConfigrations"].append(self.s3_notification_configuration["BeanstalkdConfigrations"][0])
         self.assertTrue(validate_config(json.dumps(self.s3_notification_configuration)))
 
+    @patch('swift.common.middleware.enoss.destinations.BeanstalkdDestination', new=MockBeanstalkdDestination)
     def test_4_post_configuration_valid(self):
+        self.test_1_init()
         self.fake_swift.register('POST', '/v1/a/c1', HTTPOk, {}, 'passed')
+        beanstalkd_destination = self.app.destination_handlers["BeanstalkdDestination"]
+        beanstalkd_destination.reset()
 
-        infocache = {'account/a': {'meta':{}}, 'container/a/c1': {'meta':{}}}
+        infocache = {'account/a': {'meta':{}}, 'container/a/c1': {'sysmeta':{'notifications': json.dumps(self.s3_notification_configuration)}}}
 
         req = Request.blank('/v1/a/c1?notification',
             environ={'REQUEST_METHOD': 'POST', 'swift.infocache': infocache}, body=json.dumps(self.s3_notification_configuration))
 
         res = req.get_response(self.app)
         self.assertEqual(res.status_int, 200)
+        #check if test event is sent
+        self.assertEqual(beanstalkd_destination.state, 'notification sent')
 
         stored_configuration = req.headers.get(get_sys_meta_prefix("container") + "notifications")
         # check if configuration is stored to sysmetadata
@@ -133,7 +139,12 @@ class TestENOSS(unittest.TestCase):
         for key in self.s3_notification_configuration:
             self.assertEqual(self.s3_notification_configuration[key], stored_configuration[key])
 
+
+    @patch('swift.common.middleware.enoss.destinations.BeanstalkdDestination', new=MockBeanstalkdDestination)
     def test_5_post_configuration_invalid(self):
+        self.test_1_init()
+        beanstalkd_destination = self.app.destination_handlers["BeanstalkdDestination"]
+        beanstalkd_destination.reset()
         self.fake_swift.register('POST', '/v1/a/c1', HTTPOk, {}, 'passed')
         self.fake_swift.register('POST', '/v1/a/c1/o1', HTTPOk, {}, 'passed')
 
@@ -150,6 +161,7 @@ class TestENOSS(unittest.TestCase):
             environ={'REQUEST_METHOD': 'POST', 'swift.infocache': infocache}, body=json.dumps(self.s3_notification_configuration))
         res = req.get_response(self.app)
         self.assertEqual(res.status_int, 400)
+        self.assertEqual(beanstalkd_destination.state, 'notification not sent')
 
     def test_6_read_configuration(self):
         self.fake_swift.register('GET', '/v1/a2', HTTPOk, {}, 'passed')

@@ -90,7 +90,6 @@ class ENOSSMiddleware(WSGIContext):
         req.headers["X-Backend-EventNotification-Ignore"] = True
 
         c = BeanstalkdConnection("localhost", 11300)
-        c.put("{'test': 1}")
 
         try:
             version, account, container, object = split_path(req.environ['PATH_INFO'], 1, 4, rest_with_last=True)
@@ -115,7 +114,7 @@ class ENOSSMiddleware(WSGIContext):
                 event_configation_changed = True
             resp = req.get_response(self.app)
         except Exception as e:
-            self.destination_handlers[get_destination_handler_name("beanstalkd")].connection.put("1:" + str(e))
+            c.put("1:" + str(e))
 
         try:
             if event_configation_changed:
@@ -130,7 +129,7 @@ class ENOSSMiddleware(WSGIContext):
                     if event_notifications_configuration else "")
 
         except Exception as e:
-            self.destination_handlers[get_destination_handler_name("beanstalkd")].connection.put("2:" + str(e))
+            c.put("2:" + str(e))
 
         return resp
 
