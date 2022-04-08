@@ -15,9 +15,8 @@ from swift.common.middleware.enoss.payloads import IPayload
 from swift.common.middleware.enoss.filter_rules import IRule
 from swift.common.middleware.enoss.configuration import filter_rule_handlers
 
-from helpers import FakeSwift
-#from test.debug_logger import debug_logger
-from debug_logger import debug_logger
+from test.unit.common.middleware.helpers import FakeSwift
+from test.debug_logger import debug_logger
 
 class MockBeanstalkdDestination(object):
     def __init__(self, conf):
