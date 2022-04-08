@@ -1,15 +1,30 @@
+# Copyright (c) 2022 Nemanja Vasiljevic <xvasil03@gmail.com>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+# implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import json
 import jsonschema
 
 from swift.common.utils import split_path
-
-from swift.common.middleware.enoss.utils import get_s3_event_name, get_rule_handlers, \
-    get_rule_handler_name, get_destination_handler_name, get_payload_handler_name
+from swift.common.middleware.enoss.utils import (
+    get_s3_event_name, get_rule_handlers, get_rule_handler_name,
+    get_destination_handler_name, get_payload_handler_name)
 from swift.common.middleware.enoss.constants import supported_s3_events
-
 import swift.common.middleware.enoss.filter_rules as filter_rules_module
 
 filter_rule_handlers = get_rule_handlers([filter_rules_module])
+
 
 class S3ConfigurationValidator(object):
     def __init__(self, schema_path):
@@ -19,26 +34,33 @@ class S3ConfigurationValidator(object):
     def validate_event_type(self, config):
         for _, destinations_configuration in config.items():
             for event_configuration in destinations_configuration:
-                if any(event not in supported_s3_events for event in event_configuration["Events"]):
+                if any(event not in supported_s3_events
+                       for event in event_configuration["Events"]):
                     raise Exception("Unsupported event type")
 
     def validate_rules(self, config):
         for _, destinations_configuration in config.items():
             for event_configuration in destinations_configuration:
-                for _, filter_item in event_configuration.get("Filter", {}).items():
+                filter_conf = event_configuration.get("Filter", {})
+                for _, filter_item in filter_conf.items():
                     for filter_rule in filter_item["FilterRules"]:
-                        if get_rule_handler_name(filter_rule["Name"]) not in filter_rule_handlers:
+                        if (get_rule_handler_name(filter_rule["Name"])
+                                not in filter_rule_handlers):
                             raise Exception("Unsupported rule operator")
 
     def validate_destinations(self, destination_handlers, config):
-        for destination_name in config:
-            if get_destination_handler_name(destination_name.rstrip("Configrations")) not in destination_handlers:
+        for destination_configs in config:
+            destination_name = destination_configs.rstrip("Configrations")
+            handler_name = get_destination_handler_name(destination_name)
+            if handler_name not in destination_handlers:
                 raise Exception("Unsupported destination")
 
     def validate_payload_structure(self, payload_handlers, config):
         for _, destinations_configuration in config.items():
-            for event_configuration in destinations_configuration:
-                if get_payload_handler_name(event_configuration.get("PayloadStructure", "s3")) not in payload_handlers:
+            for notification_conf in destinations_configuration:
+                payload_name = notification_conf.get("PayloadStructure", "s3")
+                handler_name = get_payload_handler_name(payload_name)
+                if handler_name not in payload_handlers:
                     raise Exception("Unsupported payload structure")
 
     def validate(self, destination_handlers, payload_handlers, config):
@@ -50,6 +72,7 @@ class S3ConfigurationValidator(object):
             self.validate_destinations(destination_handlers, config_json)
             self.validate_payload_structure(payload_handlers, config_json)
         except Exception as e:
+            # todo propagate exception
             return False
         return True
 
@@ -64,7 +87,8 @@ class S3NotifiationConfiguration(object):
                 self.config = config
                 self.rules = []
                 for rule in config["FilterRules"]:
-                    rule_handler = filter_rule_handlers[get_rule_handler_name(rule["Name"])]
+                    rule_handler_name = get_rule_handler_name(rule["Name"])
+                    rule_handler = filter_rule_handlers[rule_handler_name]
                     self.rules.append(rule_handler(rule["Value"]))
 
             def does_satisfy(self, app, request):
@@ -75,11 +99,16 @@ class S3NotifiationConfiguration(object):
             self.id = config["Id"]
             self.allowed_events = config["Events"]
             self.payload_type = config.get("PayloadStructure", "s3")
-            self.filters = [self.FilterConfiguration(filter_key, filter_config) for filter_key, filter_config in config.get("Filter", {}).items()]
+            filer_configs = config.get("Filter", {})
+            self.filters = [self.FilterConfiguration(filter_key, filter_config)
+                            for filter_key, filter_config
+                            in filer_configs.items()]
 
         def is_allowed_event(self, request):
-            version, account, container, object = split_path(request.environ['PATH_INFO'], 1, 4, rest_with_last=True)
-            method = request.environ.get('swift.orig_req_method', request.request.method)
+            version, account, container, object = split_path(
+                request.environ['PATH_INFO'], 1, 4, rest_with_last=True)
+            method = request.environ.get('swift.orig_req_method',
+                                         request.request.method)
             event = get_s3_event_name(account, container, object, method)
             for allowed_event in self.allowed_events:
                 if allowed_event.endswith("*"):
@@ -91,24 +120,28 @@ class S3NotifiationConfiguration(object):
             return False
 
         def is_satisfied_rule(self, app, request):
-            return any(filter.does_satisfy(app, request) for filter in self.filters)
+            return any(filter.does_satisfy(app, request)
+                       for filter in self.filters)
 
         def does_satisfy(self, app, request):
-            return self.is_allowed_event(request) and self.is_satisfied_rule(app, request)
+            return self.is_allowed_event(request) \
+                and self.is_satisfied_rule(app, request)
 
     def __init__(self, config):
         self.config = json.loads(config)
         self.destinations_configurations = {}
-        for destination_configurations_name, destination_configurations in self.config.items():
-            for destination_configuration in destination_configurations:
-                # <destination_name>Configrations => <destination_name>
-                destination_name = destination_configurations_name.rstrip("Configrations").lower()
-                self.destinations_configurations.setdefault(destination_name, []).append(self.DestinationConfiguration(destination_configuration))
+        for dest_confs_name, dest_confs in self.config.items():
+            for dest_conf in dest_confs:
+                # <dest_name>Configrations => <dest_name>
+                dest_name = dest_confs_name.rstrip("Configrations").lower()
+                new_dest_conf = self.DestinationConfiguration(dest_conf)
+                self.destinations_configurations.setdefault(dest_name, [])\
+                                                .append(new_dest_conf)
 
     def get_satisfied_destinations(self, app, request):
         result = {}
-        for destination_name, destination_configurations in self.destinations_configurations.items():
-            for destination_configuration in destination_configurations:
-                if destination_configuration.does_satisfy(app, request):
-                    result.setdefault(destination_name, []).append(destination_configuration)
+        for dest_name, dest_confs in self.destinations_configurations.items():
+            for dest_conf in dest_confs:
+                if dest_conf.does_satisfy(app, request):
+                    result.setdefault(dest_name, []).append(dest_conf)
         return result

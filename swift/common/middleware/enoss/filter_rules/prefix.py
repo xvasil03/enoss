@@ -1,10 +1,26 @@
+# Copyright (c) 2022 Nemanja Vasiljevic <xvasil03@gmail.com>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+# implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from .irule import IRule
-from swift.proxy.controllers.base import get_container_info, get_account_info, get_object_info
 from swift.common.utils import split_path
+
 
 class PrefixRule(IRule):
     def __call__(self, app, request):
-        version, account, container, object = split_path(request.environ['PATH_INFO'], 1, 4, rest_with_last=True)
+        version, account, container, object = split_path(
+            request.environ['PATH_INFO'], 1, 4, rest_with_last=True)
         if object:
             return object.startswith(self.value)
         elif container:
