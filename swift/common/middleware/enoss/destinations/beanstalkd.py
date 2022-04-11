@@ -15,13 +15,13 @@
 
 from .idestination import IDestination
 import json
-from pystalkd.Beanstalkd import Connection as BeanstalkdConnection
+from pystalk import BeanstalkClient
 
 
 class BeanstalkdDestination(IDestination):
     def __init__(self, conf):
         self.conf = conf["beanstalkd"]
-        self.connection = BeanstalkdConnection(
+        self.connection = BeanstalkClient(
             self.conf["addr"],
             self.conf["port"]
         )  # todo tube
@@ -30,4 +30,4 @@ class BeanstalkdDestination(IDestination):
         self.connection.close()
 
     def send_notification(self, notification):
-        self.connection.put(json.dumps(notification))
+        self.connection.put_job(json.dumps(notification))

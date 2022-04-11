@@ -27,9 +27,7 @@ from swift.common.middleware.enoss.configuration import (
 from swift.common.middleware.enoss.utils import (
     get_payload_handlers, get_destination_handlers, get_payload_handler_name,
     get_destination_handler_name)
-
 import json
-from pystalkd.Beanstalkd import Connection as BeanstalkdConnection
 
 
 class ENOSSMiddleware(WSGIContext):
@@ -124,8 +122,6 @@ class ENOSSMiddleware(WSGIContext):
         # => we want only one notification per user request
         req.headers["X-Backend-EventNotification-Ignore"] = True
 
-        c = BeanstalkdConnection("localhost", 11300)
-
         try:
             version, account, container, object = split_path(
                 req.environ['PATH_INFO'], 1, 4, rest_with_last=True)
@@ -142,7 +138,9 @@ class ENOSSMiddleware(WSGIContext):
 
                 notification_sysmeta = get_sys_meta_prefix(curr_level) \
                     + 'notifications'
-                config = req.body_file.read().strip()
+                # todo can contain too many white spaces in body
+                # maybe transform to json then to str back to remove them
+                config = req.body.decode()
                 if not config:
                     req.headers[notification_sysmeta] = ""
                 else:
@@ -160,7 +158,7 @@ class ENOSSMiddleware(WSGIContext):
                 event_configation_changed = True
             resp = req.get_response(self.app)
         except Exception as e:
-            c.put("1:" + str(e))
+            self.logger.error("error:{}".format(e))
 
         try:
             if event_configation_changed:
@@ -174,13 +172,11 @@ class ENOSSMiddleware(WSGIContext):
                 info_method = get_container_info if curr_level == "container" \
                     else get_account_info
                 notifications_conf = self.get_notification_configuration(
-                    info_method, req.environ)
-                resp.body = str.encode(str(json.loads(notifications_conf))
-                                       if notifications_conf else "")
-
+                    info_method, resp.environ)
+                resp.body = str.encode(
+                    notifications_conf if notifications_conf else '')
         except Exception as e:
-            c.put("2:" + str(e))
-
+            self.logger.error("error:{}".format(e))
         return resp
 
 
