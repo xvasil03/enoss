@@ -259,7 +259,7 @@ class TestENOSS(unittest.TestCase):
                     'notifications': json.dumps(self.s3_notification_conf)
                 }
             },
-            'container/a2/c2': {'sysmeta': ''}
+            'container/a2/c2': {'sysmeta': {}}
         }
         req = Request.blank(
             '/v1/a2?notification',
@@ -283,7 +283,7 @@ class TestENOSS(unittest.TestCase):
         beanstalkd.reset()
 
         infocache = {
-            'account/a3': {'sysmeta': ''},
+            'account/a3': {'sysmeta': {}},
             'container/a3/c3': {
                 'sysmeta': {
                     'notifications': json.dumps(self.s3_notification_conf)
@@ -323,7 +323,7 @@ class TestENOSS(unittest.TestCase):
                     'notifications': json.dumps(self.s3_notification_conf)
                 }
             },
-            'container/a4/c4': {'sysmeta': ''}
+            'container/a4/c4': {'sysmeta': {}}
         }
         req = Request.blank(
             '/v1/a4/c4',

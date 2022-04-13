@@ -28,6 +28,7 @@ from swift.common.middleware.enoss.utils import (
     get_payload_handlers, get_destination_handlers, get_payload_handler_name,
     get_destination_handler_name)
 import json
+import os
 
 
 class ENOSSMiddleware(WSGIContext):
@@ -47,7 +48,23 @@ class ENOSSMiddleware(WSGIContext):
         self.payload_handlers = {handler_name: payload_handler(self.conf)
                                  for handler_name, payload_handler
                                  in payload_handlers.items()}
+        self._load_admin_s3_conf()
         super(ENOSSMiddleware, self).__init__(app)
+
+    def _load_admin_s3_conf(self):
+        self.admin_s3_conf = None
+        admin_s3_conf_path = self.conf.get("admin_s3_conf_path")
+        if admin_s3_conf_path and os.path.isfile(admin_s3_conf_path):
+            try:
+                with open(admin_s3_conf_path) as f:
+                    admin_s3_conf = f.read()
+                    if self.configuration_validator.validate(
+                        self.destination_handlers, self.payload_handlers,
+                            admin_s3_conf):
+                        self.admin_s3_conf = admin_s3_conf
+            except Exception as e:
+                self.logger.error("error during loading admin s3 conf:{}".
+                                  format(e))
 
     def get_notification_configuration(self, info_method, environ):
         info = info_method(environ, self.app)
@@ -64,13 +81,19 @@ class ENOSSMiddleware(WSGIContext):
         else:
             return None
 
-    def get_upper_level(self, account, container, object):
-        if object:
-            return "container"
-        elif container:
-            return "account"
-        else:
-            return None
+    def _get_upper_level_confs(self, curr_level, req):
+        confs = [self.admin_s3_conf] if self.admin_s3_conf else []
+        if curr_level in ["object", "container"]:
+            notifications_conf = self.get_notification_configuration(
+                get_account_info, req.environ)
+            if notifications_conf:
+                confs.append(notifications_conf)
+        if curr_level == "object":
+            notifications_conf = self.get_notification_configuration(
+                get_container_info, req.environ)
+            if notifications_conf:
+                confs.append(notifications_conf)
+        return confs
 
     def send_test_notification(self, curr_level, req):
         # todo check if curr_level is not None
@@ -92,14 +115,14 @@ class ENOSSMiddleware(WSGIContext):
                         self.app, req, destination_configuration)
                     destination_handler.send_notification(payload)
 
-    def send_notification(self, upper_level, req):
-        # todo check if upper_level is not None
-        info_method = get_container_info if upper_level == "container" \
-            else get_account_info
-        notifications_conf = self.get_notification_configuration(
-            info_method, req.environ)
-        if notifications_conf:
-            s3_conf = S3NotifiationConfiguration(notifications_conf)
+    def send_notification(self, curr_level, req):
+        for notification_conf in self._get_upper_level_confs(curr_level, req):
+            try:
+                # in case some invalid configuration is stored
+                s3_conf = S3NotifiationConfiguration(notification_conf)
+            except Exception as e:
+                self.logger.error("{}".format(e))
+                continue
             satisfied_destinations = s3_conf.get_satisfied_destinations(
                 self.app, req)
             for destination_name, destination_configurations in \
@@ -152,7 +175,6 @@ class ENOSSMiddleware(WSGIContext):
         version, account, container, object = split_path(
             req.environ['PATH_INFO'], 1, 4, rest_with_last=True)
         curr_level = self.get_current_level(account, container, object)
-        upper_level = self.get_upper_level(account, container, object)
         event_configation_changed = False
         if req.method == "POST" and req.query_string == "notification":
             HTTP_err = self._post_notification(curr_level, req)
@@ -168,8 +190,7 @@ class ENOSSMiddleware(WSGIContext):
             # sending notifications can be unsuccessful and throw exceptions
             if event_configation_changed:
                 self.send_test_notification(curr_level, resp)
-            if upper_level:
-                self.send_notification(upper_level, resp)
+            self.send_notification(curr_level, resp)
         except Exception as e:
             self.logger.error("error:{}".format(e))
         # todo: better way to test query_string

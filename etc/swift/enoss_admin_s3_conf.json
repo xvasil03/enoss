@@ -1,0 +1,19 @@
+{
+    "BeanstalkdConfigrations": [
+      {
+        "Id": "test",
+        "Events": ["*"],
+        "PayloadStructure": "s3",
+        "Filter": {
+          "Key": {
+            "FilterRules": [
+              {
+                "Name": "prefix",
+                "Value": "admin"
+              }
+            ]
+          }
+        }
+      }
+    ]
+}
