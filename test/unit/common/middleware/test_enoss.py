@@ -211,7 +211,7 @@ class TestENOSS(unittest.TestCase):
             body=json.dumps(self.s3_notification_conf)
         )
         res = req.get_response(self.app)
-        self.assertEqual(res.status_int, 400)
+        self.assertEqual(res.status_int, 403)
         self.assertEqual(beanstalkd.state, 'notification not sent')
 
     def test_6_read_configuration(self):

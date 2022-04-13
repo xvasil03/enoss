@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from swift.common.swob import wsgify, Response
+from swift.common.swob import wsgify, HTTPForbidden, HTTPBadRequest
 from swift.common.utils import split_path, get_logger
 from swift.common.request_helpers import get_sys_meta_prefix
 from swift.proxy.controllers.base import get_container_info, get_account_info
@@ -114,6 +114,33 @@ class ENOSSMiddleware(WSGIContext):
                         self.app, req, destination_configuration)
                     destination_handler.send_notification(payload)
 
+    def _post_notification(self, curr_level, req):
+        if curr_level not in ["account", "container"]:
+            # deny notification set on object level
+            return HTTPForbidden(request=req)
+
+        notification_sysmeta = get_sys_meta_prefix(curr_level) \
+            + 'notifications'
+        # todo can contain too many white spaces in body
+        # maybe transform to json then to str back to remove them
+        config = req.body.decode()
+        if not config:
+            # body is empty => delete stored configuration
+            req.headers[notification_sysmeta] = ""
+        if self.configuration_validator.validate(
+                self.destination_handlers, self.payload_handlers, config):
+            req.headers[notification_sysmeta] = config
+        else:
+            return HTTPBadRequest(request=req, content_type='text/plain',
+                                  body='Invalid configuration')
+
+    def _get_notification(self, curr_level, resp):
+        info_method = get_container_info if curr_level == "container" \
+            else get_account_info
+        conf = self.get_notification_configuration(
+            info_method, resp.environ)
+        resp.body = str.encode(conf if conf else '')
+
     @wsgify
     def __call__(self, req):
         if req.headers.get("X-Backend-EventNotification-Ignore"):
@@ -122,61 +149,34 @@ class ENOSSMiddleware(WSGIContext):
         # => we want only one notification per user request
         req.headers["X-Backend-EventNotification-Ignore"] = True
 
-        try:
-            version, account, container, object = split_path(
-                req.environ['PATH_INFO'], 1, 4, rest_with_last=True)
-            curr_level = self.get_current_level(account, container, object)
-            upper_level = self.get_upper_level(account, container, object)
-            event_configation_changed = False
-            if req.method == "POST" and req.query_string == "notification":
-                if curr_level not in ["account", "container"]:
-                    # cant configure notifications on object level
-                    return Response(request=req,
-                                    status=400,
-                                    body=b"Invalid configuration",
-                                    content_type="text/plain")
-
-                notification_sysmeta = get_sys_meta_prefix(curr_level) \
-                    + 'notifications'
-                # todo can contain too many white spaces in body
-                # maybe transform to json then to str back to remove them
-                config = req.body.decode()
-                if not config:
-                    req.headers[notification_sysmeta] = ""
-                else:
-                    if self.configuration_validator.validate(
-                            self.destination_handlers,
-                            self.payload_handlers,
-                            config):
-                        req.headers[notification_sysmeta] = config
-                    else:
-                        # todo: send info about which part of conf is invalid
-                        return Response(request=req,
-                                        status=400,
-                                        body=b"Invalid configuration",
-                                        content_type="text/plain")
+        version, account, container, object = split_path(
+            req.environ['PATH_INFO'], 1, 4, rest_with_last=True)
+        curr_level = self.get_current_level(account, container, object)
+        upper_level = self.get_upper_level(account, container, object)
+        event_configation_changed = False
+        if req.method == "POST" and req.query_string == "notification":
+            HTTP_err = self._post_notification(curr_level, req)
+            if not HTTP_err:
                 event_configation_changed = True
-            resp = req.get_response(self.app)
-        except Exception as e:
-            self.logger.error("error:{}".format(e))
+            else:
+                # forbidden or bad request
+                return HTTP_err
+
+        resp = req.get_response(self.app)
 
         try:
+            # sending notifications can be unsuccessful and throw exceptions
             if event_configation_changed:
                 self.send_test_notification(curr_level, resp)
             if upper_level:
                 self.send_notification(upper_level, resp)
-            # todo: better way to test query_string
-            if (req.method == "GET" and req.query_string
-                    and req.query_string.startswith("notification")
-                    and resp.is_success):  # todo ACL
-                info_method = get_container_info if curr_level == "container" \
-                    else get_account_info
-                notifications_conf = self.get_notification_configuration(
-                    info_method, resp.environ)
-                resp.body = str.encode(
-                    notifications_conf if notifications_conf else '')
         except Exception as e:
             self.logger.error("error:{}".format(e))
+        # todo: better way to test query_string
+        if (req.method == "GET" and req.query_string
+                and req.query_string.startswith("notification")
+                and resp.is_success):  # todo ACL
+            self._get_notification(curr_level, resp)
         return resp
 
 
