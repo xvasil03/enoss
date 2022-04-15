@@ -17,10 +17,18 @@ from swift.common.middleware.enoss.filter_rules.irule import IRule
 from swift.common.middleware.enoss.filter_rules.prefix import PrefixRule
 from swift.common.middleware.enoss.filter_rules.suffix import SuffixRule
 from swift.common.middleware.enoss.filter_rules.httpcodes import HttpcodesRule
+from swift.common.middleware.enoss.filter_rules.users \
+    import UsersinRule, UsersoutRule
+from swift.common.middleware.enoss.filter_rules.size \
+    import MinsizeRule, MaxsizeRule
 
 __all__ = [
     'IRule',
     'PrefixRule',
     'SuffixRule',
-    'HttpcodesRule'
+    'HttpcodesRule',
+    'UsersinRule',
+    'UsersoutRule',
+    'MinsizeRule',
+    'MaxsizeRule'
 ]

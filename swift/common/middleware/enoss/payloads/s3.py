@@ -20,6 +20,7 @@ import time
 from .ipayload import IPayload
 from swift.common.middleware.enoss.utils import get_s3_event_name
 from swift.common.utils import split_path
+from swift.proxy.controllers.base import get_object_info
 
 
 class S3Payload(IPayload):
@@ -50,6 +51,8 @@ class S3Payload(IPayload):
         object = object if isinstance(object, str) else ''
         container = container if isinstance(container, str) else ''
         account = account if isinstance(account, str) else ''
+
+        obj_info = get_object_info(request.environ, app) if object else {}
 
         method = request.environ.get(
             'swift.orig_req_method', request.request.method)
@@ -92,10 +95,8 @@ class S3Payload(IPayload):
                     },
                     "object": {
                         "key": object,
-                        "size": request.headers.get('content-length', 0) \
-                        if object else 0,
-                        "eTag": request.headers.get("etag", '') \
-                        if object else '',
+                        "size": obj_info.get("length") if obj_info else 0,
+                        "eTag": obj_info.get("eTag") if obj_info else 0,
                         "versionId": object_vesion_id if object else '',
                         "sequencer": sequencer
                     }
