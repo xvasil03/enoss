@@ -27,6 +27,9 @@
               "type": "string"
             }
           },
+          "OnlySuccessfulEvents": {
+            "type": "boolean"
+          },
           "Filter": {
             "type": "object",
             "patternProperties": {

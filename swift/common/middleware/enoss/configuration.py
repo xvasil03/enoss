@@ -95,24 +95,25 @@ class S3NotifiationConfiguration(object):
                     rule_handler = filter_rule_handlers[rule_handler_name]
                     self.rules.append(rule_handler(rule["Value"]))
 
-            def does_satisfy(self, app, request):
-                return all(rule(app, request) for rule in self.rules)
+            def does_satisfy(self, app, resp):
+                return all(rule(app, resp) for rule in self.rules)
 
         def __init__(self, config):
             self.config = config
             self.id = config["Id"]
             self.allowed_events = config["Events"]
             self.payload_type = config.get("PayloadStructure", "s3")
+            self.only_succ_events = config.get("OnlySuccessfulEvents", True)
             filer_configs = config.get("Filter", {})
             self.filters = [self.FilterConfiguration(filter_key, filter_config)
                             for filter_key, filter_config
                             in filer_configs.items()]
 
-        def is_allowed_event(self, request):
+        def is_allowed_event(self, resp):
             version, account, container, object = split_path(
-                request.environ['PATH_INFO'], 1, 4, rest_with_last=True)
-            method = request.environ.get('swift.orig_req_method',
-                                         request.request.method)
+                resp.environ['PATH_INFO'], 1, 4, rest_with_last=True)
+            method = resp.environ.get('swift.orig_req_method',
+                                      resp.request.method)
             event = get_s3_event_name(account, container, object, method)
             for allowed_event in self.allowed_events:
                 if allowed_event.endswith("*"):
@@ -123,13 +124,14 @@ class S3NotifiationConfiguration(object):
                         return True
             return False
 
-        def is_satisfied_rule(self, app, request):
-            return any(filter.does_satisfy(app, request)
+        def is_satisfied_rule(self, app, resp):
+            return any(filter.does_satisfy(app, resp)
                        for filter in self.filters)
 
-        def does_satisfy(self, app, request):
-            return self.is_allowed_event(request) \
-                and self.is_satisfied_rule(app, request)
+        def does_satisfy(self, app, resp):
+            return self.is_allowed_event(resp) \
+                and self.is_satisfied_rule(app, resp) \
+                and (resp.is_success or not self.only_succ_events)
 
     def __init__(self, config):
         self.config = json.loads(config)
@@ -142,10 +144,10 @@ class S3NotifiationConfiguration(object):
                 self.destinations_configurations.setdefault(dest_name, [])\
                                                 .append(new_dest_conf)
 
-    def get_satisfied_destinations(self, app, request):
+    def get_satisfied_destinations(self, app, resp):
         result = {}
         for dest_name, dest_confs in self.destinations_configurations.items():
             for dest_conf in dest_confs:
-                if dest_conf.does_satisfy(app, request):
+                if dest_conf.does_satisfy(app, resp):
                     result.setdefault(dest_name, []).append(dest_conf)
         return result

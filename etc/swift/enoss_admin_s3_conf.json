@@ -4,6 +4,7 @@
         "Id": "test",
         "Events": ["*"],
         "PayloadStructure": "s3",
+        "OnlySuccessfulEvents": true,
         "Filter": {
           "Key": {
             "FilterRules": [
@@ -13,7 +14,7 @@
               },
               {
                 "Name": "httpCodes",
-                "Value": ["2xx", "3xx", "410"]
+                "Value": ["2xx", "3xx", "404"]
               }
             ]
           }
