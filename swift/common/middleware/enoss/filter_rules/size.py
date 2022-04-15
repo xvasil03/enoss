@@ -38,7 +38,7 @@ class MaxsizeRule(IRule):
         return type(value) == int
 
     def __call__(self, app, resp):
-        size = _get_size(resp)
+        size = _get_size(resp, app)
         return size is not None and self.value >= size
 
 
@@ -49,5 +49,5 @@ class MinsizeRule(IRule):
         return type(value) == int
 
     def __call__(self, app, resp):
-        size = _get_size(resp)
+        size = _get_size(resp, app)
         return size is not None and self.value <= size
