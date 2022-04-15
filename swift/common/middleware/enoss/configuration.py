@@ -44,9 +44,13 @@ class S3ConfigurationValidator(object):
                 filter_conf = event_configuration.get("Filter", {})
                 for _, filter_item in filter_conf.items():
                     for filter_rule in filter_item["FilterRules"]:
-                        if (get_rule_handler_name(filter_rule["Name"])
-                                not in filter_rule_handlers):
+                        handler_name = get_rule_handler_name(
+                            filter_rule["Name"])
+                        handler = filter_rule_handlers.get(handler_name)
+                        if not handler:
                             raise Exception("Unsupported rule operator")
+                        if not handler.validate(filter_rule["Value"]):
+                            raise Exception("Invalid rule value")
 
     def validate_destinations(self, destination_handlers, config):
         for destination_configs in config:

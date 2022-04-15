@@ -45,9 +45,7 @@
                         "Name": {
                           "type": "string"
                         },
-                        "Value": {
-                          "type": "string"
-                        }
+                        "Value": {}
                       }
                     }
                   }

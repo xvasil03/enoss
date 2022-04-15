@@ -18,9 +18,14 @@ from swift.common.utils import split_path
 
 
 class PrefixRule(IRule):
-    def __call__(self, app, request):
+
+    @staticmethod
+    def validate(value):
+        return type(value) == str
+
+    def __call__(self, app, resp):
         version, account, container, object = split_path(
-            request.environ['PATH_INFO'], 1, 4, rest_with_last=True)
+            resp.environ['PATH_INFO'], 1, 4, rest_with_last=True)
         if object:
             return object.startswith(self.value)
         elif container:

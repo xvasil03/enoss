@@ -20,6 +20,10 @@ class IRule(object, metaclass=abc.ABCMeta):
     def __init__(self, value):
         self.value = value
 
+    @staticmethod
+    def validate(value):
+        raise NotImplementedError('__call__ is not implemented')
+
     @abc.abstractmethod
-    def __call__(self, app, request):
+    def __call__(self, app, resp):
         raise NotImplementedError('__call__ is not implemented')

@@ -62,6 +62,8 @@ class ENOSSMiddleware(WSGIContext):
                         self.destination_handlers, self.payload_handlers,
                             admin_s3_conf):
                         self.admin_s3_conf = admin_s3_conf
+                    else:
+                        self.logger.error("Invalid s3 admin notification conf")
             except Exception as e:
                 self.logger.error("error during loading admin s3 conf:{}".
                                   format(e))
@@ -205,6 +207,6 @@ def enoss_factory(global_conf, **local_conf):
     conf = global_conf.copy()
     conf.update(local_conf)
 
-    def event_notifications_filter(app):
+    def enoss_factory(app):
         return ENOSSMiddleware(app, conf)
-    return event_notifications_filter
+    return enoss_factory

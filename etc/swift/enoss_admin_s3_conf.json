@@ -10,6 +10,10 @@
               {
                 "Name": "prefix",
                 "Value": "admin"
+              },
+              {
+                "Name": "httpCodes",
+                "Value": ["2xx", "3xx", "410"]
               }
             ]
           }
