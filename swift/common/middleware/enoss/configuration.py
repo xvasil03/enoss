@@ -125,8 +125,8 @@ class S3NotifiationConfiguration(object):
             return False
 
         def is_satisfied_rule(self, app, resp):
-            return any(filter.does_satisfy(app, resp)
-                       for filter in self.filters)
+            return not self.filters or any(filter.does_satisfy(app, resp)
+                                           for filter in self.filters)
 
         def does_satisfy(self, app, resp):
             return self.is_allowed_event(resp) \
