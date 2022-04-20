@@ -19,7 +19,7 @@ import jsonschema
 from swift.common.utils import split_path
 from swift.common.middleware.enoss.utils import (
     get_s3_event_name, get_rule_handlers, get_rule_handler_name,
-    get_destination_handler_name, get_payload_handler_name)
+    get_destination_handler_name, get_payload_handler_name, json_object_hook)
 from swift.common.middleware.enoss.constants import supported_s3_events
 import swift.common.middleware.enoss.filter_rules as filter_rules_module
 
@@ -29,7 +29,7 @@ filter_rule_handlers = get_rule_handlers([filter_rules_module])
 class S3ConfigurationValidator(object):
     def __init__(self, schema_path):
         with open(schema_path, 'r') as file:
-            self.schema = json.load(file)
+            self.schema = json.load(file, object_hook=json_object_hook)
 
     def validate_event_type(self, config):
         for _, destinations_configuration in config.items():
@@ -69,7 +69,7 @@ class S3ConfigurationValidator(object):
 
     def validate(self, destination_handlers, payload_handlers, config):
         try:
-            config_json = json.loads(config)
+            config_json = json.loads(config, object_hook=json_object_hook)
             jsonschema.validate(instance=config_json, schema=self.schema)
             self.validate_event_type(config_json)
             self.validate_rules(config_json)
@@ -134,7 +134,7 @@ class S3NotifiationConfiguration(object):
                 and (resp.is_success or not self.only_succ_events)
 
     def __init__(self, config):
-        self.config = json.loads(config)
+        self.config = json.loads(config, object_hook=json_object_hook)
         self.destinations_configurations = {}
         for dest_confs_name, dest_confs in self.config.items():
             for dest_conf in dest_confs:

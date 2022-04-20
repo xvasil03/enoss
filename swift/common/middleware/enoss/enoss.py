@@ -26,7 +26,7 @@ from swift.common.middleware.enoss.configuration import (
     S3ConfigurationValidator, S3NotifiationConfiguration)
 from swift.common.middleware.enoss.utils import (
     get_payload_handlers, get_destination_handlers, get_payload_handler_name,
-    get_destination_handler_name)
+    get_destination_handler_name, json_object_hook)
 import json
 import os
 
@@ -39,7 +39,8 @@ class ENOSSMiddleware(WSGIContext):
                                            log_route='eventnotifications')
         self.configuration_validator = S3ConfigurationValidator(
             self.conf["s3_schema"])
-        dest_conf = json.loads(self.conf.get("destinations", "{}"))
+        dest_conf = json.loads(self.conf.get("destinations", "{}"),
+            object_hook=json_object_hook)
         dest_handlers = get_destination_handlers([destinations_module])
         self.destination_handlers = {handler_name: dest_handler(dest_conf)
                                      for handler_name, dest_handler

@@ -25,6 +25,8 @@ class BeanstalkdDestination(IDestination):
             self.conf["addr"],
             self.conf["port"]
         )  # todo tube
+        self.tube = self.conf.get("tube", "default")
+        self.connection.use(self.tube)
 
     def __del__(self):
         self.connection.close()

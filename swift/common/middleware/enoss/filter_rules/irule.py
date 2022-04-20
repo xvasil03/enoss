@@ -14,9 +14,11 @@
 # limitations under the License.
 
 import abc
+import six
 
 
-class IRule(object, metaclass=abc.ABCMeta):
+@six.add_metaclass(abc.ABCMeta)
+class IRule(object):
     def __init__(self, value):
         self.value = value
 
