@@ -14,9 +14,11 @@
 # limitations under the License.
 
 import abc
+import six
 
 
-class IDestination(object, metaclass=abc.ABCMeta):
+@six.add_metaclass(abc.ABCMeta)
+class IDestination(object):
     @abc.abstractmethod
     def __init__(self, conf):
         raise NotImplementedError('__init__ is not implemented')

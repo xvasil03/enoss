@@ -14,9 +14,11 @@
 # limitations under the License.
 
 import abc
+import six
 
 
-class IPayload(object, metaclass=abc.ABCMeta):
+@six.add_metaclass(abc.ABCMeta)
+class IPayload(object):
     def __init__(self, conf):
         self.conf = conf
 
