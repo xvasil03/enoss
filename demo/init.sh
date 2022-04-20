@@ -1,13 +1,9 @@
 #!/bin/bash
 
 apt-get update
-apt-get install beanstalkd
-apt-get install python3-pip
+apt-get install -y beanstalkd
+apt-get install -y python3-pip
+apt-get install -y curl
 
 pip3 install pystalk
 pip3 install jsonschema
-
-#beanstalkd&
-#/usr/local/bin/supervisord -n -c /etc/supervisord.conf
-
-#swift-init proxy-server restart

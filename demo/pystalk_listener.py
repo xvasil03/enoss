@@ -14,5 +14,6 @@ while True:
             continue
         else:
             raise
+    print("new message:")
     print(job.job_data)
     c.delete_job(job.job_id)
