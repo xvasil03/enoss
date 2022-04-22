@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .irule import IRule
+from swift.common.middleware.enoss.filter_rules.irule import IRule
 
 
 class UsersinRule(IRule):

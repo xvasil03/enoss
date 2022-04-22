@@ -14,20 +14,26 @@
 # limitations under the License.
 
 from swift.common.middleware.enoss.filter_rules.irule import IRule
-from swift.common.utils import split_path
+from swift.proxy.controllers.base import get_object_info
 
 
-class SuffixRule(IRule):
+class ContenttypeRule(IRule):
 
     @staticmethod
     def validate(value):
         return type(value) == str
 
     def __call__(self, app, resp):
-        version, account, container, object = split_path(
-            resp.environ['PATH_INFO'], 1, 4, rest_with_last=True)
-        if object:
-            return object.endswith(self.value)
-        elif container:
-            return container.endswith(self.value)
-        return False
+        method = resp.environ.get('swift.orig_req_method', resp.request.method)
+        content_type = None
+        if method == "PUT":
+            # read content type from request headers
+            content_type = resp.environ.get("CONTENT_TYPE")
+        elif method in ["GET", "HEAD"]:
+            # read content type from respond headers
+            content_type = resp.headers.get("Content-Type")
+        else:
+            # read content type from object storage
+            object_info = get_object_info(resp.environ, app)
+            content_type = object_info.get("type")
+        return content_type and content_type == self.value

@@ -13,7 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from swift.common.middleware.enoss.filter_rules.irule import IRule
+from swift.common.middleware.enoss.filter_rules.contenttype \
+    import ContenttypeRule
 from swift.common.middleware.enoss.filter_rules.prefix import PrefixRule
 from swift.common.middleware.enoss.filter_rules.suffix import SuffixRule
 from swift.common.middleware.enoss.filter_rules.httpcodes import HttpcodesRule

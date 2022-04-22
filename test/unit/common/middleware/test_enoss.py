@@ -25,7 +25,7 @@ from swift.common.request_helpers import get_sys_meta_prefix
 from swift.common.middleware.enoss.configuration import filter_rule_handlers
 from swift.common.middleware.enoss.destinations import IDestination
 from swift.common.middleware.enoss.enoss import ENOSSMiddleware
-from swift.common.middleware.enoss.filter_rules import IRule
+from swift.common.middleware.enoss.filter_rules.irule import IRule
 from swift.common.middleware.enoss.payloads import IPayload
 
 from test.debug_logger import debug_logger

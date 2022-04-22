@@ -30,6 +30,7 @@ from swift.common.middleware.enoss.utils import (
 import json
 import os
 
+from swift.proxy.controllers.base import get_object_info, get_info
 
 class ENOSSMiddleware(WSGIContext):
     def __init__(self, app, conf, logger=None):
@@ -98,6 +99,14 @@ class ENOSSMiddleware(WSGIContext):
                 confs.append(notifications_conf)
         return confs
 
+    def _read_info_before_delete(self, req):
+        version, account, container, object = split_path(
+            req.environ['PATH_INFO'], 1, 4, rest_with_last=True)
+        if object:
+            get_object_info(req.environ, app)
+        elif container or account:
+            get_info(self.app, req.environ, account, container)
+
     def send_test_notification(self, curr_level, req):
         # todo check if curr_level is not None
         info_method = get_container_info if curr_level == "container" \
@@ -118,8 +127,8 @@ class ENOSSMiddleware(WSGIContext):
                         self.app, req, destination_configuration)
                     destination_handler.send_notification(payload)
 
-    def send_notification(self, curr_level, req):
-        for notification_conf in self._get_upper_level_confs(curr_level, req):
+    def send_notification(self, upper_level_confs, req):
+        for notification_conf in upper_level_confs:
             try:
                 # in case some invalid configuration is stored
                 s3_conf = S3NotifiationConfiguration(notification_conf)
@@ -187,13 +196,18 @@ class ENOSSMiddleware(WSGIContext):
                 # forbidden or bad request
                 return HTTP_err
 
+        upper_level_confs = self._get_upper_level_confs(curr_level, req)
+        if req.method == "DELETE" and upper_level_confs:
+            self._read_info_before_delete()
+
+        # get swift response
         resp = req.get_response(self.app)
 
         try:
             # sending notifications can be unsuccessful and throw exceptions
             if event_configation_changed:
                 self.send_test_notification(curr_level, resp)
-            self.send_notification(curr_level, resp)
+            self.send_notification(upper_level_confs, resp)
         except Exception as e:
             self.logger.error("error:{}".format(e))
         # todo: better way to test query_string

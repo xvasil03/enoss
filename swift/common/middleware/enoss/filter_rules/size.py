@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .irule import IRule
+from swift.common.middleware.enoss.filter_rules.irule import IRule
 from swift.common.utils import split_path
 from swift.proxy.controllers.base import get_account_info, get_container_info,\
     get_object_info
