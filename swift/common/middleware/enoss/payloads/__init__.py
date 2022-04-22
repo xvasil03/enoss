@@ -13,10 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from swift.common.middleware.enoss.payloads.ipayload import IPayload
 from swift.common.middleware.enoss.payloads.s3 import S3Payload
 
 __all__ = [
-    'IPayload',
     'S3Payload'
 ]

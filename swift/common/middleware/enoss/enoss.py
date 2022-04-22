@@ -13,24 +13,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from swift.common.swob import wsgify, HTTPForbidden, HTTPBadRequest
+from swift.common.swob import wsgify, HTTPForbidden, HTTPBadRequest, \
+    HTTPServerError
 from swift.common.utils import split_path, get_logger
 from swift.common.request_helpers import get_sys_meta_prefix
-from swift.proxy.controllers.base import get_container_info, get_account_info
+from swift.proxy.controllers.base import get_container_info, get_account_info,\
+    get_object_info, get_info
 from swift.common.wsgi import WSGIContext
 
 import swift.common.middleware.enoss.destinations as destinations_module
 import swift.common.middleware.enoss.payloads as payloads_module
 
 from swift.common.middleware.enoss.configuration import (
-    S3ConfigurationValidator, S3NotifiationConfiguration)
+    ConfigurationInvalid, S3ConfigurationValidator, S3NotifiationConfiguration)
 from swift.common.middleware.enoss.utils import (
     get_payload_handlers, get_destination_handlers, get_payload_handler_name,
     get_destination_handler_name, json_object_hook)
 import json
 import os
 
-from swift.proxy.controllers.base import get_object_info, get_info
 
 class ENOSSMiddleware(WSGIContext):
     def __init__(self, app, conf, logger=None):
@@ -41,7 +42,7 @@ class ENOSSMiddleware(WSGIContext):
         self.configuration_validator = S3ConfigurationValidator(
             self.conf["s3_schema"])
         dest_conf = json.loads(self.conf.get("destinations", "{}"),
-            object_hook=json_object_hook)
+                               object_hook=json_object_hook)
         dest_handlers = get_destination_handlers([destinations_module])
         self.destination_handlers = {handler_name: dest_handler(dest_conf)
                                      for handler_name, dest_handler
@@ -60,12 +61,11 @@ class ENOSSMiddleware(WSGIContext):
             try:
                 with open(admin_s3_conf_path) as f:
                     admin_s3_conf = f.read()
-                    if self.configuration_validator.validate(
-                        self.destination_handlers, self.payload_handlers,
-                            admin_s3_conf):
-                        self.admin_s3_conf = admin_s3_conf
-                    else:
-                        self.logger.error("Invalid s3 admin notification conf")
+                    self.configuration_validator.validate(
+                        self.destination_handlers,
+                        self.payload_handlers,
+                        admin_s3_conf)
+                    self.admin_s3_conf = admin_s3_conf
             except Exception as e:
                 self.logger.error("error during loading admin s3 conf:{}".
                                   format(e))
@@ -103,7 +103,7 @@ class ENOSSMiddleware(WSGIContext):
         version, account, container, object = split_path(
             req.environ['PATH_INFO'], 1, 4, rest_with_last=True)
         if object:
-            get_object_info(req.environ, app)
+            get_object_info(req.environ, self.app)
         elif container or account:
             get_info(self.app, req.environ, account, container)
 
@@ -162,12 +162,20 @@ class ENOSSMiddleware(WSGIContext):
         if not config:
             # body is empty => delete stored configuration
             req.headers[notification_sysmeta] = ""
-        if self.configuration_validator.validate(
-                self.destination_handlers, self.payload_handlers, config):
+            return
+        try:
+            self.configuration_validator.validate(
+                self.destination_handlers,
+                self.payload_handlers,
+                config)
             req.headers[notification_sysmeta] = config
-        else:
+        except ConfigurationInvalid as e:
             return HTTPBadRequest(request=req, content_type='text/plain',
-                                  body='Invalid configuration')
+                                  body=str(e))
+        except Exception as e:
+            self.logger.error("error during posting notification configuration \
+                to sysmeta: {}".format(e))
+            return HTTPServerError(request=req)
 
     def _get_notification(self, curr_level, resp):
         info_method = get_container_info if curr_level == "container" \
@@ -189,16 +197,16 @@ class ENOSSMiddleware(WSGIContext):
         curr_level = self.get_current_level(account, container, object)
         event_configation_changed = False
         if req.method == "POST" and req.query_string == "notification":
-            HTTP_err = self._post_notification(curr_level, req)
-            if not HTTP_err:
+            resp_err = self._post_notification(curr_level, req)
+            if not resp_err:
                 event_configation_changed = True
             else:
-                # forbidden or bad request
-                return HTTP_err
+                # forbidden, bad request or server error
+                return resp_err
 
         upper_level_confs = self._get_upper_level_confs(curr_level, req)
         if req.method == "DELETE" and upper_level_confs:
-            self._read_info_before_delete()
+            self._read_info_before_delete(req)
 
         # get swift response
         resp = req.get_response(self.app)

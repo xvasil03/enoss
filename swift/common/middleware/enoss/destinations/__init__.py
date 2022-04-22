@@ -15,10 +15,7 @@
 
 from swift.common.middleware.enoss.destinations.beanstalkd \
     import BeanstalkdDestination
-from swift.common.middleware.enoss.destinations.idestination \
-    import IDestination
 
 __all__ = [
-    'IDestination',
     'BeanstalkdDestination'
 ]

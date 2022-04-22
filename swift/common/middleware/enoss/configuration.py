@@ -26,17 +26,30 @@ import swift.common.middleware.enoss.filter_rules as filter_rules_module
 filter_rule_handlers = get_rule_handlers([filter_rules_module])
 
 
+class ConfigurationInvalid(Exception):
+    pass
+
+
 class S3ConfigurationValidator(object):
     def __init__(self, schema_path):
         with open(schema_path, 'r') as file:
             self.schema = json.load(file, object_hook=json_object_hook)
+
+    def load_and_validate_schema(self, config):
+        config_json = None
+        try:
+            config_json = json.loads(config, object_hook=json_object_hook)
+            jsonschema.validate(instance=config_json, schema=self.schema)
+        except Exception:
+            raise ConfigurationInvalid("Invalid configuration")
+        return config_json
 
     def validate_event_type(self, config):
         for _, destinations_configuration in config.items():
             for event_configuration in destinations_configuration:
                 if any(event not in supported_s3_events
                        for event in event_configuration["Events"]):
-                    raise Exception("Unsupported event type")
+                    raise ConfigurationInvalid("Unsupported event type")
 
     def validate_rules(self, config):
         for _, destinations_configuration in config.items():
@@ -47,17 +60,20 @@ class S3ConfigurationValidator(object):
                         handler_name = get_rule_handler_name(
                             filter_rule["Name"])
                         handler = filter_rule_handlers.get(handler_name)
+                        err_msg = None
                         if not handler:
-                            raise Exception("Unsupported rule operator")
-                        if not handler.validate(filter_rule["Value"]):
-                            raise Exception("Invalid rule value")
+                            err_msg = "Unsupported rule operator"
+                        elif not handler.validate(filter_rule["Value"]):
+                            err_msg = "Invalid rule value"
+                        if err_msg:
+                            raise ConfigurationInvalid(err_msg)
 
     def validate_destinations(self, destination_handlers, config):
         for destination_configs in config:
             destination_name = destination_configs.rstrip("Configrations")
             handler_name = get_destination_handler_name(destination_name)
             if handler_name not in destination_handlers:
-                raise Exception("Unsupported destination")
+                raise ConfigurationInvalid("Unsupported destination")
 
     def validate_payload_structure(self, payload_handlers, config):
         for _, destinations_configuration in config.items():
@@ -65,20 +81,14 @@ class S3ConfigurationValidator(object):
                 payload_name = notification_conf.get("PayloadStructure", "s3")
                 handler_name = get_payload_handler_name(payload_name)
                 if handler_name not in payload_handlers:
-                    raise Exception("Unsupported payload structure")
+                    raise ConfigurationInvalid("Unsupported payload structure")
 
     def validate(self, destination_handlers, payload_handlers, config):
-        try:
-            config_json = json.loads(config, object_hook=json_object_hook)
-            jsonschema.validate(instance=config_json, schema=self.schema)
-            self.validate_event_type(config_json)
-            self.validate_rules(config_json)
-            self.validate_destinations(destination_handlers, config_json)
-            self.validate_payload_structure(payload_handlers, config_json)
-        except Exception as e:
-            # todo propagate exception
-            return False
-        return True
+        config_json = self.load_and_validate_schema(config)
+        self.validate_event_type(config_json)
+        self.validate_rules(config_json)
+        self.validate_destinations(destination_handlers, config_json)
+        self.validate_payload_structure(payload_handlers, config_json)
 
 
 class S3NotifiationConfiguration(object):

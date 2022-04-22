@@ -24,12 +24,12 @@ from swift.common.middleware.enoss.filter_rules.size \
     import MinsizeRule, MaxsizeRule
 
 __all__ = [
-    'IRule',
     'PrefixRule',
     'SuffixRule',
     'HttpcodesRule',
     'UsersinRule',
     'UsersoutRule',
     'MinsizeRule',
-    'MaxsizeRule'
+    'MaxsizeRule',
+    'ContenttypeRule'
 ]

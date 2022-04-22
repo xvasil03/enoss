@@ -13,7 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .idestination import IDestination
+from swift.common.middleware.enoss.destinations.idestination \
+    import IDestination
 import json
 from pystalk import BeanstalkClient
 

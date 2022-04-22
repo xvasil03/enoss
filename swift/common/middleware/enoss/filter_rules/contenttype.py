@@ -35,5 +35,7 @@ class ContenttypeRule(IRule):
         else:
             # read content type from object storage
             object_info = get_object_info(resp.environ, app)
-            content_type = object_info.get("type")
+            if object_info["status"] == 200:
+                # if object exists in storage
+                content_type = object_info.get("type")
         return content_type and content_type == self.value
