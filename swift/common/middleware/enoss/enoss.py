@@ -60,7 +60,8 @@ class ENOSSMiddleware(WSGIContext):
         if admin_s3_conf_path and os.path.isfile(admin_s3_conf_path):
             try:
                 with open(admin_s3_conf_path) as f:
-                    admin_s3_conf = f.read()
+                    admin_s3_conf = json.loads(f.read(),
+                        object_hook=json_object_hook)
                     self.configuration_validator.validate(
                         self.destination_handlers,
                         self.payload_handlers,
@@ -164,17 +165,20 @@ class ENOSSMiddleware(WSGIContext):
             req.headers[notification_sysmeta] = ""
             return
         try:
+            config_json = json.loads(config, object_hook=json_object_hook)
             self.configuration_validator.validate(
                 self.destination_handlers,
                 self.payload_handlers,
-                config)
+                config_json)
+            # eliminate whitespaces
+            config = json.dumps(config_json, separators=(',', ':'))
             req.headers[notification_sysmeta] = config
         except ConfigurationInvalid as e:
             return HTTPBadRequest(request=req, content_type='text/plain',
                                   body=str(e))
         except Exception as e:
-            self.logger.error("error during posting notification configuration \
-                to sysmeta: {}".format(e))
+            self.logger.error("error during posting notification configuration"
+                "to sysmeta: {}".format(e))
             return HTTPServerError(request=req)
 
     def _get_notification(self, curr_level, resp):

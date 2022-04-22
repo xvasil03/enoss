@@ -108,54 +108,56 @@ class TestENOSS(unittest.TestCase):
                 self.app.payload_handlers,
                 testing_conf)
 
-        conf_json = json.dumps(self.s3_notification_conf)
-        self.assertNoRaises(validate_config, conf_json)
+        self.assertNoRaises(validate_config, self.s3_notification_conf)
 
         beanstalkd_conf = self.s3_notification_conf["BeanstalkdConfigrations"]
 
         # unsupported configuration name
         self.s3_notification_conf["InvalidNameConfiguration"] = beanstalkd_conf
-        conf_json = json.dumps(self.s3_notification_conf)
-        self.assertRaises(ConfigurationInvalid, validate_config, conf_json)
+        self.assertRaises(ConfigurationInvalid, validate_config, \
+            self.s3_notification_conf)
         del self.s3_notification_conf["InvalidNameConfiguration"]
 
         # unsupported event type
         beanstalkd_conf[0]["Events"].append("BadEventType")
-        conf_json = json.dumps(self.s3_notification_conf)
-        self.assertRaises(ConfigurationInvalid, validate_config, conf_json)
+        self.assertRaises(ConfigurationInvalid, validate_config, \
+            self.s3_notification_conf)
         del beanstalkd_conf[0]["Events"][-1]
 
         # missing value for filter operator
         conf_rules = beanstalkd_conf[0]["Filter"]["Key"]["FilterRules"]
         conf_rules.append({"Name": "suffix"})
-        conf_json = json.dumps(self.s3_notification_conf)
-        self.assertRaises(ConfigurationInvalid, validate_config, conf_json)
+        self.assertRaises(ConfigurationInvalid, validate_config, \
+            self.s3_notification_conf)
 
         # valid filter operator with value
         conf_rules[-1] = {"Name": "suffix", "Value": "a"}
-        conf_json = json.dumps(self.s3_notification_conf)
-        self.assertNoRaises(validate_config, conf_json)
+        self.assertNoRaises(validate_config, self.s3_notification_conf)
 
         # non existing filter operator
         conf_rules[-1] = {"Name": "non_existing", "Value": "1"}
         conf_json = json.dumps(self.s3_notification_conf)
-        self.assertRaises(ConfigurationInvalid, validate_config, conf_json)
+        self.assertRaises(ConfigurationInvalid, validate_config, \
+            self.s3_notification_conf)
         del conf_rules[-1]
 
         # not supported payload structure
         beanstalkd_conf[0]["PayloadStructure"] = "NotSupportedPayloadStructure"
         conf_json = json.dumps(self.s3_notification_conf)
-        self.assertRaises(ConfigurationInvalid, validate_config, conf_json)
+        self.assertRaises(ConfigurationInvalid, validate_config, \
+            self.s3_notification_conf)
 
         # default payload structure is s3 which is supported
         del beanstalkd_conf[0]["PayloadStructure"]
         conf_json = json.dumps(self.s3_notification_conf)
-        self.assertNoRaises(ConfigurationInvalid, validate_config, conf_json)
+        self.assertNoRaises(ConfigurationInvalid, validate_config, \
+            self.s3_notification_conf)
 
         # one destination can have multiple configurations
         beanstalkd_conf.append(beanstalkd_conf[0])
         conf_json = json.dumps(self.s3_notification_conf)
-        self.assertNoRaises(ConfigurationInvalid, validate_config, conf_json)
+        self.assertNoRaises(ConfigurationInvalid, validate_config, \
+            self.s3_notification_conf)
 
     @patch('swift.common.middleware.enoss.destinations.BeanstalkdDestination',
            new=MockBeanstalkdDestination)

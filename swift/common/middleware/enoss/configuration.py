@@ -35,12 +35,10 @@ class S3ConfigurationValidator(object):
         with open(schema_path, 'r') as file:
             self.schema = json.load(file, object_hook=json_object_hook)
 
-    def load_and_validate_schema(self, config):
-        config_json = None
+    def validate_schema(self, config_json):
         try:
-            config_json = json.loads(config, object_hook=json_object_hook)
             jsonschema.validate(instance=config_json, schema=self.schema)
-        except Exception:
+        except jsonschema.ValidationError:
             raise ConfigurationInvalid("Invalid configuration")
         return config_json
 
@@ -83,8 +81,8 @@ class S3ConfigurationValidator(object):
                 if handler_name not in payload_handlers:
                     raise ConfigurationInvalid("Unsupported payload structure")
 
-    def validate(self, destination_handlers, payload_handlers, config):
-        config_json = self.load_and_validate_schema(config)
+    def validate(self, destination_handlers, payload_handlers, config_json):
+        self.validate_schema(config_json)
         self.validate_event_type(config_json)
         self.validate_rules(config_json)
         self.validate_destinations(destination_handlers, config_json)
@@ -144,7 +142,8 @@ class S3NotifiationConfiguration(object):
                 and (resp.is_success or not self.only_succ_events)
 
     def __init__(self, config):
-        self.config = json.loads(config, object_hook=json_object_hook)
+        self.config = config if type(config) == dict \
+            else json.loads(config, object_hook=json_object_hook)
         self.destinations_configurations = {}
         for dest_confs_name, dest_confs in self.config.items():
             for dest_conf in dest_confs:
