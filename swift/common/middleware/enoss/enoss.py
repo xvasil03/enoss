@@ -43,14 +43,8 @@ class ENOSSMiddleware(WSGIContext):
         self.configuration_validator = S3ConfigurationValidator(
             self.conf["s3_schema"])
         self._load_destinations_conf()
-        dest_handlers = get_destination_handlers([destinations_module])
-        self.destination_handlers = {handler_name: dest_handler(
-            self.destinations_conf) for handler_name, dest_handler
-                                    in dest_handlers.items()}
-        payload_handlers = get_payload_handlers([payloads_module])
-        self.payload_handlers = {handler_name: payload_handler(self.conf)
-                                 for handler_name, payload_handler
-                                 in payload_handlers.items()}
+        self._load_destination_handlers()
+        self._load_payload_handlers()
         self._load_admin_s3_conf()
         super(ENOSSMiddleware, self).__init__(app)
 
@@ -61,6 +55,27 @@ class ENOSSMiddleware(WSGIContext):
         else:
             raise Exception("Cannot load destinations configuration {}".format(
                 self.conf["destinations_conf"]))
+
+    def _load_destination_handlers(self):
+        self.destination_handlers = {}
+        dest_handlers = get_destination_handlers([destinations_module])
+        use_dests = [dest.strip().title()
+                     for dest in self.conf["use_destinations"].split(",")]
+        self.logger.info("avaliable enoss destinations:{}".format(
+            ",".join(use_dests))
+        )
+        for dest_name in use_dests:
+            handler_name = get_destination_handler_name(dest_name)
+            handler = dest_handlers[handler_name]
+            self.destination_handlers[handler_name] = handler(
+                self.destinations_conf
+            )
+
+    def _load_payload_handlers(self):
+        payload_handlers = get_payload_handlers([payloads_module])
+        self.payload_handlers = {handler_name: payload_handler(self.conf)
+                                 for handler_name, payload_handler
+                                 in payload_handlers.items()}
 
     def _load_admin_s3_conf(self):
         self.admin_s3_conf = None
