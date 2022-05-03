@@ -31,6 +31,7 @@ from swift.common.middleware.enoss.utils import (
     get_destination_handler_name, json_object_hook)
 import json
 import os
+from six.moves.configparser import ConfigParser
 
 
 class ENOSSMiddleware(WSGIContext):
@@ -41,12 +42,11 @@ class ENOSSMiddleware(WSGIContext):
                                            log_route='eventnotifications')
         self.configuration_validator = S3ConfigurationValidator(
             self.conf["s3_schema"])
-        dest_conf = json.loads(self.conf.get("destinations", "{}"),
-                               object_hook=json_object_hook)
+        self._load_destinations_conf()
         dest_handlers = get_destination_handlers([destinations_module])
-        self.destination_handlers = {handler_name: dest_handler(dest_conf)
-                                     for handler_name, dest_handler
-                                     in dest_handlers.items()}
+        self.destination_handlers = {handler_name: dest_handler(
+            self.destinations_conf) for handler_name, dest_handler
+                                    in dest_handlers.items()}
         payload_handlers = get_payload_handlers([payloads_module])
         self.payload_handlers = {handler_name: payload_handler(self.conf)
                                  for handler_name, payload_handler
@@ -54,14 +54,24 @@ class ENOSSMiddleware(WSGIContext):
         self._load_admin_s3_conf()
         super(ENOSSMiddleware, self).__init__(app)
 
+    def _load_destinations_conf(self):
+        cfg_parser = ConfigParser()
+        if cfg_parser.read(self.conf["destinations_conf_path"]):
+            self.destinations_conf = cfg_parser._sections
+        else:
+            raise Exception("Cannot load destinations configuration {}".format(
+                self.conf["destinations_conf"]))
+
     def _load_admin_s3_conf(self):
         self.admin_s3_conf = None
         admin_s3_conf_path = self.conf.get("admin_s3_conf_path")
         if admin_s3_conf_path and os.path.isfile(admin_s3_conf_path):
             try:
                 with open(admin_s3_conf_path) as f:
-                    admin_s3_conf = json.loads(f.read(),
-                        object_hook=json_object_hook)
+                    admin_s3_conf = json.loads(
+                        f.read(),
+                        object_hook=json_object_hook
+                    )
                     self.configuration_validator.validate(
                         self.destination_handlers,
                         self.payload_handlers,
@@ -177,8 +187,8 @@ class ENOSSMiddleware(WSGIContext):
             return HTTPBadRequest(request=req, content_type='text/plain',
                                   body=str(e))
         except Exception as e:
-            self.logger.error("error during posting notification configuration"
-                "to sysmeta: {}".format(e))
+            self.logger.error("error during posting notification \
+                configuration" "to sysmeta: {}".format(e))
             return HTTPServerError(request=req)
 
     def _get_notification(self, curr_level, resp):

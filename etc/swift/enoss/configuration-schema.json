@@ -1,0 +1,63 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "minProperties": 1,
+  "patternProperties": {
+    ".*Configrations$": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["Id", "Events"],
+        "additionalProperties": false,
+        "properties": {
+          "Id": {
+            "type": "string"
+          },
+          "TargetParams": {
+            "type": "object"
+          },
+          "PayloadStructure": {
+            "type": "string"
+          },
+          "Events": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          },
+          "OnlySuccessfulEvents": {
+            "type": "boolean"
+          },
+          "Filter": {
+            "type": "object",
+            "patternProperties": {
+              ".*": {
+                "type": "object",
+                "required": ["FilterRules"],
+                "additionalProperties": false,
+                "properties": {
+                  "FilterRules": {
+                    "type": "array",
+                  	"items": {
+                      "type": "object",
+                      "required": ["Name", "Value"],
+                      "additionalProperties": false,
+                      "properties": {
+                        "Name": {
+                          "type": "string"
+                        },
+                        "Value": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

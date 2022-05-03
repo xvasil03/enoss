@@ -15,6 +15,7 @@
 
 from swift.common.middleware.enoss.destinations.idestination \
     import IDestination
+
 import json
 from pystalk import BeanstalkClient
 

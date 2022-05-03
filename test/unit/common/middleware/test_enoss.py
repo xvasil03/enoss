@@ -17,6 +17,7 @@ import unittest
 from unittest.mock import patch
 
 import json
+import os
 
 from swift.common.swob import HTTPOk, Request
 
@@ -34,7 +35,7 @@ from test.debug_logger import debug_logger
 from test.unit.common.middleware.helpers import FakeSwift
 
 
-class MockBeanstalkdDestination(object):
+class MockDestination(object):
     def __init__(self, conf):
         self.reset()
 
@@ -72,34 +73,56 @@ class TestENOSS(unittest.TestCase):
     def tearDown(self):
         pass
 
+    @classmethod
+    def setUpClass(cls):
+        with open('/tmp/enoss-destinations.conf', 'w'): pass
+
+    @classmethod
+    def tearDownClass(self):
+        if os.path.exists('/tmp/enoss-destinations.conf'):
+            os.remove('/tmp/enoss-destinations.conf')
+
     def assertNoRaises(self, test_f, *args, **kwargs):
         try:
             test_f(*args, **kwargs)
         except Exception as e:
             self.fail(str(e))
 
+    @patch('swift.common.middleware.enoss.destinations.BeanstalkdDestination',
+           new=MockDestination)
+    @patch('swift.common.middleware.enoss.destinations.ElasticsearchDestination',
+           new=MockDestination)
     def test_1_init(self):
         app_conf = {
-            'destinations': '''{
-                "beanstalkd": {
-                    "addr": "localhost", "port": 11300,
-                    "tube": "default", "handler": "beanstalkd"
-                }
-            }''',
-            's3_schema': '/usr/local/src/swift/swift/common/middleware/enoss/'
-                         'configuration-schema.json'
+            'destinations_conf_path': '/tmp/enoss-destinations.conf',
+            's3_schema': '/etc/swift/enoss/configuration-schema.json'
         }
         # enoss middleware initializes all payload/destination/filter handlers
         self.app = ENOSSMiddleware(self.fake_swift, app_conf,
                                    logger=self.logger)
 
     def test_2_handlers(self):
-        for _, handler in self.app.destination_handlers.items():
-            self.assertIsInstance(handler, IDestination)
-        for _, handler in self.app.payload_handlers.items():
-            self.assertIsInstance(handler, IPayload)
-        for _, handler in filter_rule_handlers.items():
-            self.assertTrue(issubclass(handler, IRule))
+        def check_interface(self, module, interface):
+            for cls in map(module.__dict__.get, module.__all__):
+                self.assertTrue(
+                    isinstance(cls, interface) or issubclass(cls, interface)
+                )
+
+        import swift.common.middleware.enoss.destinations as dsts
+        import swift.common.middleware.enoss.filter_rules as filters
+        import swift.common.middleware.enoss.payloads as payloads
+
+        from swift.common.middleware.enoss.destinations.idestination \
+            import IDestination as dst_interface
+        from swift.common.middleware.enoss.filter_rules.irule \
+            import IRule as filter_interface
+        from swift.common.middleware.enoss.payloads.ipayload \
+            import IPayload as payload_interface
+
+
+        check_interface(self, dsts, dst_interface)
+        check_interface(self, filters, filter_interface)
+        check_interface(self, payloads, payload_interface)
 
     def test_3_configuration(self):
         def validate_config(testing_conf):
@@ -159,8 +182,6 @@ class TestENOSS(unittest.TestCase):
         self.assertNoRaises(ConfigurationInvalid, validate_config, \
             self.s3_notification_conf)
 
-    @patch('swift.common.middleware.enoss.destinations.BeanstalkdDestination',
-           new=MockBeanstalkdDestination)
     def test_4_post_configuration_valid(self):
         self.test_1_init()
         self.fake_swift.register('POST', '/v1/a/c1', HTTPOk, {}, 'passed')
@@ -197,8 +218,6 @@ class TestENOSS(unittest.TestCase):
             self.assertEqual(self.s3_notification_conf[key],
                              stored_configuration[key])
 
-    @patch('swift.common.middleware.enoss.destinations.BeanstalkdDestination',
-           new=MockBeanstalkdDestination)
     def test_5_post_configuration_invalid(self):
         self.test_1_init()
         beanstalkd = self.app.destination_handlers["BeanstalkdDestination"]
@@ -283,8 +302,6 @@ class TestENOSS(unittest.TestCase):
         body = res.body.decode('utf8').replace("'", '"')
         self.assertEqual(json.loads(body), self.s3_notification_conf)
 
-    @patch('swift.common.middleware.enoss.destinations.BeanstalkdDestination',
-           new=MockBeanstalkdDestination)
     def test_7_send_notification_container_level(self):
         self.test_1_init()
         self.fake_swift.register('GET', '/v1/a3/c3/o3',
@@ -320,8 +337,6 @@ class TestENOSS(unittest.TestCase):
         self.assertEqual(res.status_int, 200)
         self.assertEqual(beanstalkd.state, 'notification sent')
 
-    @patch('swift.common.middleware.enoss.destinations.BeanstalkdDestination',
-           new=MockBeanstalkdDestination)
     def test_8_send_notification_account_level(self):
         self.test_1_init()
         self.fake_swift.register('GET', '/v1/a4/c4', HTTPOk, {}, 'passed')

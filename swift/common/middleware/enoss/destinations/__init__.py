@@ -15,7 +15,10 @@
 
 from swift.common.middleware.enoss.destinations.beanstalkd \
     import BeanstalkdDestination
+from swift.common.middleware.enoss.destinations.elasticsearch \
+    import ElasticsearchDestination
 
 __all__ = [
-    'BeanstalkdDestination'
+    'BeanstalkdDestination',
+    'ElasticsearchDestination',
 ]

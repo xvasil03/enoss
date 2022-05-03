@@ -1,0 +1,24 @@
+{
+    "BeanstalkdConfigrations": [
+      {
+        "Id": "test",
+        "Events": ["*"],
+        "PayloadStructure": "s3",
+        "OnlySuccessfulEvents": true,
+        "Filter": {
+          "Key": {
+            "FilterRules": [
+              {
+                "Name": "prefix",
+                "Value": "admin"
+              },
+              {
+                "Name": "httpCodes",
+                "Value": ["2xx", "3xx", "404"]
+              }
+            ]
+          }
+        }
+      }
+    ]
+}

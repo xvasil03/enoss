@@ -18,11 +18,9 @@ account_autocreate = true
 
 [filter:enoss]
 paste.filter_factory = swift.common.middleware.enoss.enoss:enoss_factory
-admin_s3_conf_path = /etc/swift/enoss_admin_s3_conf.json
-destinations: {
-  "beanstalkd" :{"addr": "localhost", "port": 11300, "tube": "default"}
-  }
-s3_schema = /usr/local/src/swift/swift/common/middleware/enoss/configuration-schema.json
+admin_s3_conf_path = /etc/swift/enoss/admin_s3_conf.json
+destinations_conf_path = /etc/swift/enoss/destinations.conf
+s3_schema = /etc/swift/enoss/configuration-schema.json
 
 [filter:tempauth]
 use = egg:swift#tempauth
