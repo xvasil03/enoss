@@ -15,7 +15,7 @@
 
 from setuptools import setup, find_namespace_packages
 
-VERSION = '0.0.1'
+VERSION = '0.0.1-1'
 DESCRIPTION = 'Event Notifications in OpenStack Swift'
 
 with open("README.rst", "r", encoding="utf-8") as fh:
@@ -35,15 +35,8 @@ setup(
         long_description=LONG_DESCRIPTION,
         long_description_content_type="text/x-rst",
         packages=find_namespace_packages(include=["enoss*"]),
-        install_requires=[],
+        install_requires=["jsonschema"],
         keywords=['openstack swift', 'event notifications'],
-        data_files=[
-            ("/etc/swift/enoss", ["etc/swift/enoss/admin_s3_conf.json",
-                "etc/swift/enoss/configuration-schema.json",
-                "etc/swift/enoss/elastic_index_mapping.json",
-                "etc/swift/enoss/destinations.conf-sample",
-                "etc/swift/enoss/proxy-server.conf-sample"])
-        ],
         classifiers=[
             "Development Status :: 5 - Production/Stable",
             "Environment :: OpenStack",
