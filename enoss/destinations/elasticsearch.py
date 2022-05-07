@@ -13,8 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from swift.common.middleware.enoss.destinations.idestination \
-    import IDestination
+from enoss.destinations.idestination import IDestination
 
 from elasticsearch import Elasticsearch
 import json

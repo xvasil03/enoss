@@ -13,8 +13,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from swift.common.middleware.enoss.payloads.s3 import S3Payload
+from enoss.destinations.idestination import IDestination
 
-__all__ = [
-    'S3Payload'
-]
+import json
+from greenstalk import Client
+
+class BeanstalkdDestination(IDestination):
+    def __init__(self, conf):
+        self.conf = conf["beanstalkd"]
+        self.connection = Client((self.conf["addr"], int(self.conf["port"])))
+        self.tube = self.conf.get("tube", "default")
+        self.connection.use(self.tube)
+
+    def __del__(self):
+        self.connection.close()
+
+    def send_notification(self, notification):
+        self.connection.put(json.dumps(notification))

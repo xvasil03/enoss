@@ -13,21 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from swift.common.middleware.enoss.filter_rules.irule import IRule
-from swift.common.utils import split_path
+from enoss.payloads.s3 import S3Payload
 
-
-class PrefixRule(IRule):
-
-    @staticmethod
-    def validate(value):
-        return type(value) == str
-
-    def __call__(self, app, resp):
-        version, account, container, object = split_path(
-            resp.environ['PATH_INFO'], 1, 4, rest_with_last=True)
-        if object:
-            return object.startswith(self.value)
-        elif container:
-            return container.startswith(self.value)
-        return False
+__all__ = [
+    'S3Payload'
+]

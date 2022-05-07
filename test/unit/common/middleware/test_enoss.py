@@ -23,13 +23,13 @@ from swift.common.swob import HTTPOk, Request
 
 from swift.common.request_helpers import get_sys_meta_prefix
 
-from swift.common.middleware.enoss.configuration import filter_rule_handlers, \
+from enoss.configuration import filter_rule_handlers, \
     ConfigurationInvalid
-from swift.common.middleware.enoss.destinations.idestination \
+from enoss.destinations.idestination \
     import IDestination
-from swift.common.middleware.enoss.enoss import ENOSSMiddleware
-from swift.common.middleware.enoss.filter_rules.irule import IRule
-from swift.common.middleware.enoss.payloads.ipayload import IPayload
+from enoss.enoss import ENOSSMiddleware
+from enoss.filter_rules.irule import IRule
+from enoss.payloads.ipayload import IPayload
 
 from test.debug_logger import debug_logger
 from test.unit.common.middleware.helpers import FakeSwift
@@ -88,9 +88,9 @@ class TestENOSS(unittest.TestCase):
         except Exception as e:
             self.fail(str(e))
 
-    @patch('swift.common.middleware.enoss.destinations.BeanstalkdDestination',
+    @patch('enoss.destinations.BeanstalkdDestination',
            new=MockDestination)
-    @patch('swift.common.middleware.enoss.destinations.ElasticsearchDestination',
+    @patch('enoss.destinations.ElasticsearchDestination',
            new=MockDestination)
     def test_1_init(self):
         app_conf = {
@@ -108,15 +108,15 @@ class TestENOSS(unittest.TestCase):
                     isinstance(cls, interface) or issubclass(cls, interface)
                 )
 
-        import swift.common.middleware.enoss.destinations as dsts
-        import swift.common.middleware.enoss.filter_rules as filters
-        import swift.common.middleware.enoss.payloads as payloads
+        import enoss.destinations as dsts
+        import enoss.filter_rules as filters
+        import enoss.payloads as payloads
 
-        from swift.common.middleware.enoss.destinations.idestination \
+        from enoss.destinations.idestination \
             import IDestination as dst_interface
-        from swift.common.middleware.enoss.filter_rules.irule \
+        from enoss.filter_rules.irule \
             import IRule as filter_interface
-        from swift.common.middleware.enoss.payloads.ipayload \
+        from enoss.payloads.ipayload \
             import IPayload as payload_interface
 
 

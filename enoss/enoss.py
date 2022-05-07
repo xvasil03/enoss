@@ -21,12 +21,12 @@ from swift.proxy.controllers.base import get_container_info, get_account_info,\
     get_object_info, get_info
 from swift.common.wsgi import WSGIContext
 
-import swift.common.middleware.enoss.destinations as destinations_module
-import swift.common.middleware.enoss.payloads as payloads_module
+import enoss.destinations as destinations_module
+import enoss.payloads as payloads_module
 
-from swift.common.middleware.enoss.configuration import (
+from enoss.configuration import (
     ConfigurationInvalid, S3ConfigurationValidator, S3NotifiationConfiguration)
-from swift.common.middleware.enoss.utils import (
+from enoss.utils import (
     get_payload_handlers, get_destination_handlers, get_payload_handler_name,
     get_destination_handler_name, json_object_hook)
 import json
@@ -54,7 +54,7 @@ class ENOSSMiddleware(WSGIContext):
             self.destinations_conf = cfg_parser._sections
         else:
             raise Exception("Cannot load destinations configuration {}".format(
-                self.conf["destinations_conf"]))
+                self.conf["destinations_conf_path"]))
 
     def _load_destination_handlers(self):
         self.destination_handlers = {}

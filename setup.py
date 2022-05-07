@@ -34,14 +34,15 @@ setup(
         description=DESCRIPTION,
         long_description=LONG_DESCRIPTION,
         long_description_content_type="text/x-rst",
-        packages=find_namespace_packages(include=["swift.*"]),
+        packages=find_namespace_packages(include=["enoss*"]),
         install_requires=[],
         keywords=['openstack swift', 'event notifications'],
         data_files=[
             ("/etc/swift/enoss", ["etc/swift/enoss/admin_s3_conf.json",
                 "etc/swift/enoss/configuration-schema.json",
-                "etc/swift/enoss/destinations.conf",
-                "etc/swift/enoss/elastic_index_mapping.json"])
+                "etc/swift/enoss/elastic_index_mapping.json",
+                "etc/swift/enoss/destinations.conf-sample",
+                "etc/swift/enoss/proxy-server.conf-sample"])
         ],
         classifiers=[
             "Development Status :: 5 - Production/Stable",
@@ -56,5 +57,6 @@ setup(
             "Programming Language :: Python :: 3.7",
             "Programming Language :: Python :: 3.8",
             "Programming Language :: Python :: 3.9"
-        ]
+        ],
+        options={"bdist_wheel": {"universal": "1"}}
 )

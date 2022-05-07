@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from swift.common.middleware.enoss.filter_rules.irule import IRule
+from enoss.filter_rules.irule import IRule
 
 
 class HttpcodesRule(IRule):

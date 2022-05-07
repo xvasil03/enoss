@@ -17,8 +17,8 @@ from datetime import datetime
 from email.utils import parsedate
 import time
 
-from swift.common.middleware.enoss.payloads.ipayload import IPayload
-from swift.common.middleware.enoss.utils import get_s3_event_name
+from enoss.payloads.ipayload import IPayload
+from enoss.utils import get_s3_event_name
 from swift.common.utils import split_path
 from swift.proxy.controllers.base import get_object_info
 
