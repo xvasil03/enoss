@@ -24,11 +24,12 @@ class KafkaDestination(IDestination):
         self.conf = conf["kafka"]
         conn_conf = self._get_conn_conf()
         self.conn = KafkaProducer(conn_conf)
+        self.topic = self.conf["topic"]
 
     def _get_conn_conf(self):
         conn_prefix = "CONN_"
         conn_conf = {key[len(conn_prefix)]:value \
-            if key.starswith(conn_prefix) for key, value in self.conn}
+            for key, value in self.conn if key.starswith(conn_prefix)}
         return conn_conf
 
     def __del__(self):
