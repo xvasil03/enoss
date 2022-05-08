@@ -15,8 +15,10 @@
 
 from enoss.destinations.beanstalkd import BeanstalkdDestination
 from enoss.destinations.elasticsearch import ElasticsearchDestination
+from enoss.destinations.kafka import KafkaDestination
 
 __all__ = [
     'BeanstalkdDestination',
     'ElasticsearchDestination',
+    'KafkaDestination'
 ]
