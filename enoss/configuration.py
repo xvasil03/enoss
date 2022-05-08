@@ -26,6 +26,9 @@ import enoss.filter_rules as filter_rules_module
 filter_rule_handlers = get_rule_handlers([filter_rules_module])
 
 
+def _remove_suffix(input, suffix):
+    return input[:-len(suffix)]
+
 class ConfigurationInvalid(Exception):
     pass
 
@@ -68,7 +71,8 @@ class S3ConfigurationValidator(object):
 
     def validate_destinations(self, destination_handlers, config):
         for destination_configs in config:
-            destination_name = destination_configs.rstrip("Configrations")
+            destination_name = _remove_suffix(
+                destination_configs, "Configrations")
             handler_name = get_destination_handler_name(destination_name)
             if handler_name not in destination_handlers:
                 raise ConfigurationInvalid("Unsupported destination")
@@ -148,7 +152,8 @@ class S3NotifiationConfiguration(object):
         for dest_confs_name, dest_confs in self.config.items():
             for dest_conf in dest_confs:
                 # <dest_name>Configrations => <dest_name>
-                dest_name = dest_confs_name.rstrip("Configrations").lower()
+                dest_name = _remove_suffix(
+                    dest_confs_name, "Configrations").lower()
                 new_dest_conf = self.DestinationConfiguration(dest_conf)
                 self.destinations_configurations.setdefault(dest_name, [])\
                                                 .append(new_dest_conf)
