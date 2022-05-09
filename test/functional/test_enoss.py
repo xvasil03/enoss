@@ -178,7 +178,6 @@ class TestENOSS(unittest.TestCase):
         self.assertFalse(resp.text)
 
     def test_POST_GET_BAD_GOD_config(self):
-        pass
         if tf.skip:
             raise SkipTest
 

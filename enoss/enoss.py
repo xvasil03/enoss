@@ -201,9 +201,12 @@ class ENOSSMiddleware(WSGIContext):
         except ConfigurationInvalid as e:
             return HTTPBadRequest(request=req, content_type='text/plain',
                                   body=str(e))
+        except json.JSONDecodeError:
+            return HTTPBadRequest(request=req, content_type='text/plain',
+                                  body="Invalid json")
         except Exception as e:
-            self.logger.error("error during posting notification \
-                configuration" "to sysmeta: {}".format(e))
+            self.logger.error("error during posting notification "
+                "configuration to sysmeta: {}".format(e))
             return HTTPServerError(request=req)
 
     def _get_notification(self, curr_level, resp):

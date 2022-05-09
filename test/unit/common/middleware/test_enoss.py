@@ -94,6 +94,7 @@ class TestENOSS(unittest.TestCase):
            new=MockDestination)
     def test_1_init(self):
         app_conf = {
+            'use_destinations': 'beanstalkd',
             'destinations_conf_path': '/tmp/enoss-destinations.conf',
             's3_schema': '/etc/swift/enoss/configuration-schema.json'
         }

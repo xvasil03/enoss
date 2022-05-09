@@ -1,19 +1,15 @@
 #!/usr/bin/env python3
 
-from pystalk import BeanstalkClient, BeanstalkError
-from time import sleep
+from greenstalk import Client
 
-c = BeanstalkClient("localhost", 11300)
+c = Client(("localhost", 11300))
 
+print("beanstalkd-stats:")
+print(c.stats())
 while True:
-    try:
-        job = c.reserve_job(1)
-    except BeanstalkError as e:
-        if e.message == 'TIMED_OUT':
-            sleep(0.5)
-            continue
-        else:
-            raise
+    print("Reserving message")
+    job = c.reserve()
     print("new message:")
-    print(job.job_data)
-    c.delete_job(job.job_id)
+    print(job.body)
+    c.delete(job)
+c.close()
