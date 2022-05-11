@@ -23,6 +23,21 @@ from swift.common.utils import split_path
 from swift.proxy.controllers.base import get_object_info
 
 
+def _get_object_info(object, response, app):
+    obj_info = {}
+    method = response.environ.get(
+            'swift.orig_req_method', response.request.method)
+    if method in ["GET", "HEAD"]:
+        obj_info["eTag"] =  response.headers["Etag"]
+        obj_info["length"] = response.headers["Content-Length"]
+    elif method == "PUT":
+        obj_info["eTag"] = response.headers["Etag"]
+        obj_info["length"] = response.request.headers["Content-Length"]
+    else:
+        obj_info = get_object_info(response.environ, app)
+    return obj_info
+
+
 class S3Payload(IPayload):
 
     def create_test_payload(self, app, request, invoking_configuration):
@@ -52,7 +67,8 @@ class S3Payload(IPayload):
         container = container if isinstance(container, str) else ''
         account = account if isinstance(account, str) else ''
 
-        obj_info = get_object_info(request.environ, app) if object else {}
+        obj_info = _get_object_info(object, request, app) \
+		   if object else {}
 
         method = request.environ.get(
             'swift.orig_req_method', request.request.method)

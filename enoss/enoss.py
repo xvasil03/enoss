@@ -59,8 +59,11 @@ class ENOSSMiddleware(WSGIContext):
     def _load_destination_handlers(self):
         self.destination_handlers = {}
         dest_handlers = get_destination_handlers([destinations_module])
-        use_dests = [dest.strip().title()
-                     for dest in self.conf["use_destinations"].split(",")]
+        use_dests = []
+        for dest in self.conf["use_destinations"].split(","):
+            dest = dest.strip()
+            if dest:
+                use_dests.append(dest)
         self.logger.info("avaliable enoss destinations:{}".format(
             ",".join(use_dests))
         )
@@ -236,13 +239,13 @@ class ENOSSMiddleware(WSGIContext):
                 # forbidden, bad request or server error
                 return resp_err
 
-        upper_level_confs = self._get_upper_level_confs(curr_level, req)
-        if req.method == "DELETE" and upper_level_confs:
+        if req.method == "DELETE":
             self._read_info_before_delete(req)
 
         # get swift response
         resp = req.get_response(self.app)
 
+        upper_level_confs = self._get_upper_level_confs(curr_level, resp)
         try:
             # sending notifications can be unsuccessful and throw exceptions
             if event_configation_changed:
