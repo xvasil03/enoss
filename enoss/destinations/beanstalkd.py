@@ -16,17 +16,30 @@
 from enoss.destinations.idestination import IDestination
 
 import json
-from greenstalk import Client
+import sys
+
+IS_PY2 = sys.version_info[0] < 3
+
+if IS_PY2:
+    from beanstalk.serverconn import ServerConn
+else:
+    from greenstalk import Client
 
 class BeanstalkdDestination(IDestination):
     def __init__(self, conf):
         self.conf = conf["beanstalkd"]
-        self.connection = Client((self.conf["addr"], int(self.conf["port"])))
         self.tube = self.conf.get("tube", "default")
+        if IS_PY2:
+          self.connection = ServerConn(
+            self.conf["addr"], int(self.conf["port"]))
+        else:
+            self.connection = Client(
+              (self.conf["addr"], int(self.conf["port"])))
         self.connection.use(self.tube)
 
     def __del__(self):
-        self.connection.close()
+        if self.connection:
+            self.connection.close()
 
     def send_notification(self, notification):
         self.connection.put(json.dumps(notification))
