@@ -1,0 +1,14 @@
+{
+  "name": "ENOSS test scenario",
+  "sizes": [{
+    "name": "tiny",
+    "size_min": 4096,
+    "size_max": 5536
+  }],
+  "initial_files": {
+    "tiny": 30
+  },
+  "crud_profile": [0, 1, 0, 0],
+  "user_count": 7,
+  "container_count": 100
+}
