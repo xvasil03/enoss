@@ -3,6 +3,5 @@
 # process, which may cause wedges in the gate later.
 
 jsonschema
-eventlet>=0.33.0
 pybeanstalk
 kafka-python

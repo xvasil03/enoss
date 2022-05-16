@@ -13,12 +13,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
+
 from enoss.destinations.beanstalkd import BeanstalkdDestination
-from enoss.destinations.elasticsearch import ElasticsearchDestination
 from enoss.destinations.kafka import KafkaDestination
 
 __all__ = [
     'BeanstalkdDestination',
-    'ElasticsearchDestination',
     'KafkaDestination'
 ]
+
+
+if sys.version_info[0] >= 3:
+    from enoss.destinations.elasticsearch import ElasticsearchDestination
+    __all__.append('ElasticsearchDestination')
