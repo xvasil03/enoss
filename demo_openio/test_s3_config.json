@@ -1,0 +1,21 @@
+{
+ "BeanstalkdConfigrations":[
+    {
+       "Id":"test",
+       "Events":[
+          "*"
+       ],
+       "PayloadStructure":"s3",
+       "Filter":{
+          "Key":{
+             "FilterRules":[
+                {
+                   "Name":"suffix",
+                   "Value":".json"
+                }
+             ]
+          }
+       }
+    }
+ ]
+}

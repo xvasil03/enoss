@@ -1,0 +1,4 @@
+[beanstalkd]
+addr = 127.0.0.41
+port = 6014
+tube = enoss

@@ -1,0 +1,111 @@
+[DEFAULT]
+use_stderr = False
+bind_ip = 127.0.0.41
+bind_port = 6007
+workers = 1
+max_clients = 1024
+user = openio
+log_facility = /dev/log
+log_level = INFO
+log_name = OIO,OPENIO,oioswift,0
+eventlet_debug = false
+
+sds_namespace = OPENIO
+sds_proxy_url = http://127.0.0.41:6006
+sds_default_account = openio
+
+sds_connection_timeout = 5
+sds_read_timeout = 35
+sds_write_timeout = 35
+
+sds_pool_connections = 500
+sds_pool_maxsize = 500
+sds_max_retries = 0
+
+sds_tls = False
+
+
+
+[pipeline:main]
+pipeline = catch_errors gatekeeper healthcheck proxy-logging cache bulk tempurl proxy-logging swift3 enoss tempauth proxy-logging copy slo dlo versioned_writes proxy-logging proxy-server
+
+[filter:enoss]
+paste.filter_factory = enoss.enoss:enoss_factory
+use_destinations=beanstalkd
+admin_s3_conf_path = /etc/swift/enoss/admin_s3_conf.json
+destinations_conf_path = /etc/swift/enoss/destinations_oio.conf-sample
+s3_schema = /etc/swift/enoss/configuration-schema.json
+
+[filter:catch_errors]
+use = egg:swift#catch_errors
+
+[filter:gatekeeper]
+use = egg:swift#gatekeeper
+
+[filter:healthcheck]
+use = egg:oioswift#healthcheck
+
+[filter:proxy-logging]
+use = egg:swift#proxy_logging
+access_log_headers = False
+access_log_headers_only = 
+
+
+
+[filter:cache]
+use = egg:swift#memcache
+memcache_servers = 127.0.0.41:6019
+memcache_max_connections = 10
+oio_cache = True
+oio_cache_ttl = 0
+
+[filter:bulk]
+use = egg:swift#bulk
+
+[filter:tempurl]
+use = egg:swift#tempurl
+
+[filter:swift3]
+use = egg:swift3#swift3
+force_swift_request_proxy_log = True
+s3_acl = True
+check_bucket_owner = True
+location = us-east-1
+max_bucket_listing = 1000
+max_multi_delete_objects = 1000
+max_upload_part_num = 10000
+log_s3api_command = False
+bucket_db_enabled = True
+bucket_db_prefix = s3bucket:
+storage_domain = s3.openio.io
+bucket_db_host = 127.0.0.41:6011
+
+[filter:tempauth]
+use = egg:oioswift#tempauth
+user_demo_demo = DEMO_PASS .admin
+
+[filter:copy]
+use = egg:oioswift#copy
+object_post_as_copy = False
+
+
+
+[filter:slo]
+use = egg:oioswift#slo
+max_manifest_segments = 10000
+concurrency = 10
+
+[filter:dlo]
+use = egg:swift#dlo
+
+[filter:versioned_writes]
+use = egg:oioswift#versioned_writes
+allow_versioned_writes = True
+
+[app:proxy-server]
+use = egg:oioswift#main
+object_post_as_copy = False
+allow_account_management = True
+account_autocreate = True
+sds_chunk_checksum_algo = 
+
