@@ -1,7 +1,7 @@
 ENOSS - Event Notifications in Openstack Swift
 ==============================================
 
-A middleware that enables publishing notifications containing information about occurred events in OpenStack Swift. 
+A middleware that enables publishing notifications containing information about occurred events in OpenStack Swift.
 Located in pipeline of proxy-server.
 
 Key featrues
@@ -19,13 +19,29 @@ The middleware heavily utilizes containers/buckets and accounts metadata. Inform
 
 **AWS S3 compatibility** - ENOSS puts a big emphasis on support and compatibility with AWS S3. The structure of event configuration and event names in ENOSS is compatible with AWS S3. ENOSS also supports all filtering rules from AWS S3, and the default event notification structure is compatible with AWS S3. This is all done to ease transfer users from AWS S3 to OpenStack Swift. Using the existing, well-documented protocol,  users will have an easier time learning and using event notifications in OpenStack Swift.
 
-Configuration
--------------
+ENOSS configuration
+-------------------
+ENOSS needs to be added into Proxy server pipeline (idealy behind s3api middleware). Then section [enoss] in proxy-server.conf must be configured with following options:
+
+* destinations_conf_path - is a path to a configuration file containing all information needed for ENOSS to connect to various destinations (mandatory).
+
+* use_destinations - is a list of destinations (separated by comma) that can be used during ENOSS runtime. Since ENOSS supports multiple destinations, not all of them must be used during run time. Therefore, ENOSS will create connections only to destinations specified in this list (mandatory).
+
+* s3_schema - path to file containing JSON schema used during the validation process of new notification configurations (mandatory).
+
+* admin_s3_conf_path - path to file containing admins notification configuration for publishing notifications (optional).
+
+Once ENOSS is configured the Proxy server must be restarted.
+
+Example of Swift configuration with enabled ENOSS middleware is located in etc/swift/enoss.
+
+Notification configuration
+--------------------------
 **Setting event notification configuration** - in order to enable event notifications on specific container, first step is to store its configuration. For this purpose ENOSS uses API ``POST /v1/<acc>/<cont>?notification``. Authorized user sends event notification configuration using request body, ENOSS perform validation, if configuration is valid, ENOSS will store configuration to container system metadata, otherwise it will return unsuccessful HTTP code.
 
 **Reading stored event notification configuration** - ENOSS offers reading stored notification configuration. For this purpose offers API: ``GET /v1/<acc>/<cont>?notification``.
 
-**Configuration structure** - configuration structure is compatible with AWS S3 Event notifications configuration. 
+**Configuration structure** - configuration structure is compatible with AWS S3 Event notifications configuration.
 
 Description of notification configuration::
 
