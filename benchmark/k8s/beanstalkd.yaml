@@ -1,0 +1,52 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: beanstalkd
+  labels:
+    app: beanstalkd
+spec:
+  nodeName: node7
+  containers:
+  - image: schickling/beanstalkd
+    imagePullPolicy: IfNotPresent
+    name: beanstalkd
+    resources:
+      requests:
+        memory: "4Gi"
+        cpu: 2
+      limits:
+        memory: "8Gi"
+        cpu: 4
+    lifecycle:
+      postStart:
+        exec:
+          command:
+            - "/bin/sh"
+            - "-c"
+            - |
+              apk update
+              apk add git
+              apk add python3
+              apk add py3-pip
+              pip3 install pystalk
+              git clone https://github.com/xvasil03/enoss
+              # two processes to listen and empty beanstalkd
+              nohup python3 enoss/demo/pystalk_listener.py &
+              nohup python3 enoss/demo/pystalk_listener.py &
+  restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: beanstalkd
+  name: beanstalkd-service
+spec:
+  ports:
+  - port: 11300
+    protocol: TCP
+    targetPort: 11300
+  selector:
+    app: beanstalkd
+  sessionAffinity: None
+  type: ClusterIP

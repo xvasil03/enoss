@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ssbench
+  labels:
+    app: ssbench
+spec:
+  containers:
+  - image: wnkz/docker-ssbench
+    command:
+      - "sleep"
+      - "6048000"
+    imagePullPolicy: IfNotPresent
+    name: ssbench
+  restartPolicy: Always

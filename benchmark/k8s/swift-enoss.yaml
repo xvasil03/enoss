@@ -1,0 +1,62 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: swift-enoss
+  labels:
+    app: swift-enoss
+spec:
+  containers:
+    - image: dockerswiftaio/docker-swift:latest
+      name: swift-enoss
+      ports:
+        - containerPort: 8080
+      volumeMounts:
+      - name: enoss-configmap
+        mountPath: /enoss-config
+      resources:
+        requests:
+          memory: "16Gi"
+          cpu: 16
+          ephemeral-storage: "50Gi"
+        limits:
+          memory: "32Gi"
+          cpu: 24
+      lifecycle:
+        postStart:
+          exec:
+            command:
+              - "/bin/bash"
+              - "-c"
+              - |
+                apt-get update
+                apt-get install -y git
+                git clone https://github.com/xvasil03/enoss
+                cd enoss
+                pip3 install -r requirements.txt
+                pip3 install .
+                cp -r etc/swift/enoss /etc/swift/enoss
+                # copy files from configmap to proper locations
+                cp /enoss-config/proxy-server.conf /etc/swift/
+                cp /enoss-config/destinations.conf /etc/swift/enoss/
+                cp /enoss-config/http_ca.crt /etc/swift/enoss/
+                swift-init proxy restart
+  volumes:
+    - name: enoss-configmap
+      configMap:
+        name: enoss-configmap
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: swift-enoss
+  name: swift-service
+spec:
+  ports:
+  - port: 8080
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app: swift-enoss
+  sessionAffinity: None
+  type: ClusterIP
