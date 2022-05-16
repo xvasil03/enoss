@@ -41,6 +41,8 @@ Notification configuration
 
 **Reading stored event notification configuration** - ENOSS offers reading stored notification configuration. For this purpose offers API: ``GET /v1/<acc>/<cont>?notification``.
 
+**Demo** script ``demo/demo.sh`` shows setting notification configuration on container, and then reading stored notification configuration. For Swift demo check https://github.com/NVIDIA/docker-swift and for OpenIO SDS demo check https://docs.openio.io/latest/source/sandbox-guide/docker_image.html#ref-docker-image in order to retrieve username and password.
+
 **Configuration structure** - configuration structure is compatible with AWS S3 Event notifications configuration.
 
 Description of notification configuration::
