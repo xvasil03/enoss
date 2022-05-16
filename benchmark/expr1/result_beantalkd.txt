@@ -1,0 +1,27 @@
+ENOSS test scenario  (generated with ssbench version 0.3.6)
+Worker count:   5   Concurrency:   7  Ran 2022-05-10 17:58:59 UTC to 2022-05-10 18:59:00 UTC (3600s)
+Object expiration (X-Delete-After): None (sec)
+
+% Ops    C   R   U   D       Size Range       Size Name
+100%   %  0  100   0   0        4 kB -   6 kB  tiny
+---------------------------------------------------------------------
+          0 100   0   0      CRUD weighted average
+
+TOTAL
+       Count: 1140780 (    0 error;     0 retries:  0.00%)  Average requests per second: 316.9
+                            min       max      avg      std_dev  95%-ile                   Worst latency TX ID
+       First-byte latency:  0.003 -   0.861    0.022  (  0.015)    0.031  (all obj sizes)  tx265daeeae57247e4890a7-00627aabb9
+       Last-byte  latency:  0.003 -   0.861    0.022  (  0.015)    0.031  (all obj sizes)  tx265daeeae57247e4890a7-00627aabb9
+       First-byte latency:  0.003 -   0.861    0.022  (  0.015)    0.031  (    tiny objs)  tx265daeeae57247e4890a7-00627aabb9
+       Last-byte  latency:  0.003 -   0.861    0.022  (  0.015)    0.031  (    tiny objs)  tx265daeeae57247e4890a7-00627aabb9
+
+READ
+       Count: 1140780 (    0 error;     0 retries:  0.00%)  Average requests per second: 316.9
+                            min       max      avg      std_dev  95%-ile                   Worst latency TX ID
+       First-byte latency:  0.003 -   0.861    0.022  (  0.015)    0.031  (all obj sizes)  tx265daeeae57247e4890a7-00627aabb9
+       Last-byte  latency:  0.003 -   0.861    0.022  (  0.015)    0.031  (all obj sizes)  tx265daeeae57247e4890a7-00627aabb9
+       First-byte latency:  0.003 -   0.861    0.022  (  0.015)    0.031  (    tiny objs)  tx265daeeae57247e4890a7-00627aabb9
+       Last-byte  latency:  0.003 -   0.861    0.022  (  0.015)    0.031  (    tiny objs)  tx265daeeae57247e4890a7-00627aabb9
+
+Distribution of requests per worker-ID: 228156.000 - 228156.000 (avg: 228156.000; stddev:   0.000)
+INFO:Scenario run results saved to /tmp/ssbench-results/ENOSS_test_scenario.u7.o-.r3600.2022-05-10.175859.stat.gz

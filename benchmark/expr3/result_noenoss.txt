@@ -1,0 +1,73 @@
+Large test scenario  (generated with ssbench version 0.3.6)
+Worker count:   5   Concurrency:   5  Ran 2022-05-14 15:28:07 UTC to 2022-05-14 15:58:08 UTC (1800s)
+Object expiration (X-Delete-After): None (sec)
+
+% Ops    C   R   U   D       Size Range       Size Name
+ 52%   % 36  27  18  18        1 kB           tiny
+ 35%   % 36  27  18  18      100 kB           small
+ 13%   % 36  27  18  18        1 MB           medium
+---------------------------------------------------------------------
+         36  27  18  18      CRUD weighted average
+
+TOTAL
+       Count: 223618 (    0 error;     0 retries:  0.00%)  Average requests per second: 124.2
+                            min       max      avg      std_dev  95%-ile                   Worst latency TX ID
+       First-byte latency:  0.003 -   0.712    0.011  (  0.013)    0.023  (all obj sizes)  tx68a7406594b24ca7ad06c-00627fcb7b
+       Last-byte  latency:  0.004 -   6.239    0.039  (  0.044)    0.097  (all obj sizes)  txf185580c078e49d8a4b7d-00627fd03b
+       First-byte latency:  0.004 -   0.712    0.011  (  0.013)    0.023  (    tiny objs)  tx68a7406594b24ca7ad06c-00627fcb7b
+       Last-byte  latency:  0.004 -   6.239    0.046  (  0.049)    0.107  (    tiny objs)  txf185580c078e49d8a4b7d-00627fd03b
+       First-byte latency:  0.003 -   0.525    0.011  (  0.013)    0.022  (   small objs)  txb2628804fdb94614b38f5-00627fcf5c
+       Last-byte  latency:  0.004 -   3.865    0.030  (  0.037)    0.086  (   small objs)  tx1afd05741c4d48609a200-00627fd03e
+       First-byte latency:  0.004 -   0.370    0.011  (  0.012)    0.023  (  medium objs)  tx1c5bc8dc8b4d4277b4849-00627fced2
+       Last-byte  latency:  0.007 -   2.759    0.034  (  0.034)    0.090  (  medium objs)  tx15c39ff5e5f84035b1f96-00627fd00e
+
+CREATE
+       Count: 81132 (    0 error;     0 retries:  0.00%)  Average requests per second:  45.1
+                            min       max      avg      std_dev  95%-ile                   Worst latency TX ID
+       First-byte latency:  N/A   -   N/A      N/A    (  N/A  )    N/A    (all obj sizes)  
+       Last-byte  latency:  0.011 -   6.239    0.055  (  0.048)    0.112  (all obj sizes)  txf185580c078e49d8a4b7d-00627fd03b
+       First-byte latency:  N/A   -   N/A      N/A    (  N/A  )    N/A    (    tiny objs)  
+       Last-byte  latency:  0.011 -   6.239    0.069  (  0.052)    0.125  (    tiny objs)  txf185580c078e49d8a4b7d-00627fd03b
+       First-byte latency:  N/A   -   N/A      N/A    (  N/A  )    N/A    (   small objs)  
+       Last-byte  latency:  0.012 -   3.865    0.038  (  0.042)    0.097  (   small objs)  tx1afd05741c4d48609a200-00627fd03e
+       First-byte latency:  N/A   -   N/A      N/A    (  N/A  )    N/A    (  medium objs)  
+       Last-byte  latency:  0.014 -   0.808    0.044  (  0.030)    0.101  (  medium objs)  tx3b44c21092dc4db8b8d9a-00627fcb64
+
+READ
+       Count: 61415 (    0 error;     0 retries:  0.00%)  Average requests per second:  34.1
+                            min       max      avg      std_dev  95%-ile                   Worst latency TX ID
+       First-byte latency:  0.003 -   0.712    0.011  (  0.013)    0.023  (all obj sizes)  tx68a7406594b24ca7ad06c-00627fcb7b
+       Last-byte  latency:  0.004 -   0.712    0.012  (  0.014)    0.026  (all obj sizes)  tx68a7406594b24ca7ad06c-00627fcb7b
+       First-byte latency:  0.004 -   0.712    0.011  (  0.013)    0.023  (    tiny objs)  tx68a7406594b24ca7ad06c-00627fcb7b
+       Last-byte  latency:  0.004 -   0.712    0.011  (  0.013)    0.023  (    tiny objs)  tx68a7406594b24ca7ad06c-00627fcb7b
+       First-byte latency:  0.003 -   0.525    0.011  (  0.013)    0.022  (   small objs)  txb2628804fdb94614b38f5-00627fcf5c
+       Last-byte  latency:  0.004 -   0.526    0.012  (  0.013)    0.023  (   small objs)  txb2628804fdb94614b38f5-00627fcf5c
+       First-byte latency:  0.004 -   0.370    0.011  (  0.012)    0.023  (  medium objs)  tx1c5bc8dc8b4d4277b4849-00627fced2
+       Last-byte  latency:  0.007 -   0.643    0.018  (  0.017)    0.044  (  medium objs)  txef713c86e7814788ab9fc-00627fcac9
+
+UPDATE
+       Count: 40276 (    0 error;     0 retries:  0.00%)  Average requests per second:  22.4
+                            min       max      avg      std_dev  95%-ile                   Worst latency TX ID
+       First-byte latency:  N/A   -   N/A      N/A    (  N/A  )    N/A    (all obj sizes)  
+       Last-byte  latency:  0.012 -   3.880    0.055  (  0.045)    0.112  (all obj sizes)  tx5b9df2427c27491dafd85-00627fd03e
+       First-byte latency:  N/A   -   N/A      N/A    (  N/A  )    N/A    (    tiny objs)  
+       Last-byte  latency:  0.012 -   3.880    0.069  (  0.043)    0.125  (    tiny objs)  tx5b9df2427c27491dafd85-00627fd03e
+       First-byte latency:  N/A   -   N/A      N/A    (  N/A  )    N/A    (   small objs)  
+       Last-byte  latency:  0.012 -   2.534    0.039  (  0.043)    0.097  (   small objs)  tx795d4132004946608f0a7-00627fd03f
+       First-byte latency:  N/A   -   N/A      N/A    (  N/A  )    N/A    (  medium objs)  
+       Last-byte  latency:  0.016 -   1.210    0.043  (  0.036)    0.098  (  medium objs)  tx2beeae74e84c4e4f8b680-00627fcad5
+
+DELETE
+       Count: 40795 (    0 error;     0 retries:  0.00%)  Average requests per second:  22.7
+                            min       max      avg      std_dev  95%-ile                   Worst latency TX ID
+       First-byte latency:  N/A   -   N/A      N/A    (  N/A  )    N/A    (all obj sizes)  
+       Last-byte  latency:  0.009 -   2.914    0.030  (  0.043)    0.086  (all obj sizes)  txc0878a5f30424e60ad9e6-00627fd00e
+       First-byte latency:  N/A   -   N/A      N/A    (  N/A  )    N/A    (    tiny objs)  
+       Last-byte  latency:  0.009 -   2.914    0.030  (  0.047)    0.086  (    tiny objs)  txc0878a5f30424e60ad9e6-00627fd00e
+       First-byte latency:  N/A   -   N/A      N/A    (  N/A  )    N/A    (   small objs)  
+       Last-byte  latency:  0.009 -   2.649    0.030  (  0.034)    0.086  (   small objs)  tx262e89951a61424488aba-00627fd00e
+       First-byte latency:  N/A   -   N/A      N/A    (  N/A  )    N/A    (  medium objs)  
+       Last-byte  latency:  0.010 -   2.759    0.031  (  0.045)    0.088  (  medium objs)  tx15c39ff5e5f84035b1f96-00627fd00e
+
+Distribution of requests per worker-ID: 44723.000 - 44724.000 (avg: 44723.600; stddev:   0.490)
+INFO:Scenario run results saved to /tmp/ssbench-results/Large_test_scenario.u5.o-.r1800.2022-05-14.152807.stat.gz
