@@ -15,7 +15,7 @@
 
 from setuptools import setup, find_namespace_packages
 
-VERSION = '0.0.2'
+VERSION = '0.0.2-1'
 DESCRIPTION = 'Event Notifications in OpenStack Swift'
 
 with open("README.rst", "r", encoding="utf-8") as fh:
