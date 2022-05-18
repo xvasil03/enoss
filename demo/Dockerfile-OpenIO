@@ -1,0 +1,7 @@
+FROM openio/sds
+
+COPY . /enoss
+COPY etc/swift/enoss /etc/swift/enoss
+#COPY etc/swift/enoss/oio-proxy.conf-sample /etc/oio/sds/OPENIO/oioswift-0/proxy-server.conf
+
+RUN ["/bin/bash", "/enoss/demo/init-openio.sh"]

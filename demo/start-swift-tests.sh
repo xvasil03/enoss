@@ -1,6 +1,5 @@
 #!/bin/bash
 
-nohup beanstalkd &
 nohup /bin/bash /swift/bin/launch.sh &
 
 if [[ ! -z "${RUN_UNIT_TEST_ENOSS}" ]]; then
@@ -15,6 +14,7 @@ if [[ ! -z "${RUN_FUNC_TEST_ENOSS}" ]]; then
     echo "ENOSS functional test finished"
 fi
 
-
-echo "Beanstalk listening:"
-python3 /enoss/demo/pystalk_listener.py
+tail -f /dev/null
+tail -f /var/log/swift/hourly
+ls /var/log/swift
+tail -f /var/log/swift/proxy.log

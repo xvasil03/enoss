@@ -33,7 +33,7 @@ pipeline = catch_errors gatekeeper healthcheck proxy-logging cache bulk tempurl 
 paste.filter_factory = enoss.enoss:enoss_factory
 use_destinations=beanstalkd
 admin_s3_conf_path = /etc/swift/enoss/admin_s3_conf.json
-destinations_conf_path = /etc/swift/enoss/destinations_oio.conf-sample
+destinations_conf_path = /etc/swift/enoss/destinations.conf-sample
 s3_schema = /etc/swift/enoss/configuration-schema.json
 
 [filter:catch_errors]

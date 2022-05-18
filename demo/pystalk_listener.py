@@ -3,6 +3,7 @@
 from greenstalk import Client
 
 c = Client(("localhost", 11300))
+c.watch("enoss")
 
 print("beanstalkd-stats:")
 print(c.stats())

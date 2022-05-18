@@ -1,7 +1,7 @@
 [beanstalkd]
-addr = localhost
+addr = beanstalkd-service
 port = 11300
-tube = default
+tube = enoss
 
 [elasticsearch]
 hosts = https://172.18.0.2:9200

@@ -1,0 +1,12 @@
+FROM alpine
+
+COPY . enoss
+
+RUN apk update
+RUN apk add bash
+RUN apk add --no-cache beanstalkd
+EXPOSE 11300
+
+ENV PYTHONUNBUFFERED=1
+
+CMD ["/bin/bash", "/enoss/demo/start-beanstalkd.sh"]

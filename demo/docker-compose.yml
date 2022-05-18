@@ -1,0 +1,39 @@
+version: '3'
+services:
+  beanstalkd-service:
+    image: beanstalkd-listener
+    build:
+      context: ../
+      dockerfile: ./demo/Dockerfile-Beanstalkd
+    ports:
+    - '11300'
+  swift-service:
+    image: enoss-swift
+    build:
+      context: ../
+      dockerfile: ./demo/Dockerfile-Swift
+    depends_on:
+      - beanstalkd-service
+    environment:
+      - RUN_UNIT_TEST_ENOSS=1
+      - RUN_FUNC_TEST_ENOSS=1
+  openio-service:
+    image: enoss-openio
+    #container_name: openio-enoss
+    build:
+      context: ../
+      dockerfile: ./demo/Dockerfile-OpenIO
+    ports:
+    - '6007'
+    #environment:
+    #- OPENIO_IPADDR=172.20.0.30
+    depends_on:
+    - beanstalkd-service
+  demo-worker:
+    image: demo-worker
+    build:
+      context: ../
+      dockerfile: ./demo/Dockerfile-DemoWorker
+    depends_on:
+      - swift-service
+      - openio-service

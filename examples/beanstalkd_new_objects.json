@@ -1,0 +1,20 @@
+{
+ "BeanstalkdConfigrations":[
+    {
+       "Id":"test",
+       "Events":[ "s3:ObjectCreated:*"
+       ],
+       "PayloadStructure":"s3",
+       "Filter":{
+          "Key":{
+             "FilterRules":[
+                {
+                   "Name":"suffix",
+                   "Value":".json"
+                }
+             ]
+          }
+       }
+    }
+ ]
+}
